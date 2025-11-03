@@ -10,6 +10,9 @@ $cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
 $course = get_course($cm->course);
 require_login($course, true, $cm);
 
+$context = context_module::instance($cm->id);
+require_capability('mod/autogenquiz:view', $context);
+
 $record = $DB->get_record('autogenquiz_files', ['id' => $fileid], '*', MUST_EXIST);
 $record->confirmed_text = $confirmed;
 $DB->update_record('autogenquiz_files', $record);

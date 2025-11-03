@@ -1,12 +1,18 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Upgrade steps for mod_autogenquiz
+ *
+ * @param int $oldversion
+ * @return bool
+ */
 function xmldb_autogenquiz_upgrade($oldversion) {
     global $DB;
 
     $dbman = $DB->get_manager();
 
-    // Add autogenquiz_files table if missing (from prior upgrade).
+    // --- 2025102701: Create autogenquiz_files table if missing.
     if ($oldversion < 2025102701) {
         $table = new xmldb_table('autogenquiz_files');
 
@@ -29,7 +35,7 @@ function xmldb_autogenquiz_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025102701, 'autogenquiz');
     }
 
-    // Add confirmed_text column.
+    // --- 2025102702: Add confirmed_text column to autogenquiz_files.
     if ($oldversion < 2025102702) {
         $table = new xmldb_table('autogenquiz_files');
         $field = new xmldb_field('confirmed_text', XMLDB_TYPE_TEXT, null, null, null, null, null);
@@ -39,6 +45,28 @@ function xmldb_autogenquiz_upgrade($oldversion) {
         }
 
         upgrade_mod_savepoint(true, 2025102702, 'autogenquiz');
+    }
+
+    // --- 2025110303: Create autogenquiz_tasks table.
+    if ($oldversion < 2025110303) {
+        $table = new xmldb_table('autogenquiz_tasks');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('fileid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('updated_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('fileid_fk', XMLDB_KEY_FOREIGN, ['fileid'], 'autogenquiz_files', ['id']);
+        $table->add_key('courseid_fk', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2025110303, 'autogenquiz');
     }
 
     return true;

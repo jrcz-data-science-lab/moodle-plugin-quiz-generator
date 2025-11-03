@@ -7,6 +7,8 @@ $fileid = required_param('fileid', PARAM_INT);
 $cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
 $course = get_course($cm->course);
 require_login($course, true, $cm);
+$context = context_module::instance($cm->id);
+require_capability('mod/autogenquiz:view', $context);
 
 $PAGE->set_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $fileid]);
 $PAGE->set_title('AutoGenQuiz - Generate Questions');

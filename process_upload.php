@@ -11,8 +11,8 @@ $id = required_param('id', PARAM_INT);
 $cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
 $course = get_course($cm->course);
 require_login($course, true, $cm);
-
 $context = context_module::instance($cm->id);
+require_capability('mod/autogenquiz:view', $context);
 
 // Check upload
 if (!isset($_FILES['quizfile'])) {
@@ -93,6 +93,10 @@ try {
     $extracted = 'Text extraction failed: ' . $e->getMessage();
 }
 
+// --- Normalize encoding to valid UTF-8 (fix emoji / special characters) ---
+$extracted = mb_convert_encoding($extracted, 'UTF-8', 'auto');
+$extracted = iconv('UTF-8', 'UTF-8//IGNORE', $extracted);
+
 // Save metadata and extracted text
 $record = new stdClass();
 $record->autogenquizid = $cm->instance;
@@ -102,8 +106,18 @@ $record->filesize = $storedfile->get_filesize();
 $record->filehash = $storedfile->get_contenthash();
 $record->status = 'uploaded';
 $record->timecreated = time();
-$record->confirmed_text = $extracted;
-$DB->insert_record('autogenquiz_files', $record);
+$record->confirmed_text = trim($extracted);
+
+$fileid = $DB->insert_record('autogenquiz_files', $record, true);
+
+// --- Create a task entry for this upload ---
+$task = new stdClass();
+$task->fileid = $fileid;
+$task->courseid = $course->id;
+$task->status = 'pending';
+$task->created_at = time();
+$task->updated_at = time();
+$DB->insert_record('autogenquiz_tasks', $task);
 
 // Redirect
 redirect(new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]),
