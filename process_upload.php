@@ -103,7 +103,17 @@ $record->filehash = $storedfile->get_contenthash();
 $record->status = 'uploaded';
 $record->timecreated = time();
 $record->confirmed_text = $extracted;
-$DB->insert_record('autogenquiz_files', $record);
+
+$fileid = $DB->insert_record('autogenquiz_files', $record, true);
+
+// --- Create a task entry for this upload ---
+$task = new stdClass();
+$task->fileid = $fileid;
+$task->courseid = $course->id;
+$task->status = 'pending';
+$task->created_at = time();
+$task->updated_at = time();
+$DB->insert_record('autogenquiz_tasks', $task);
 
 // Redirect
 redirect(new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]),
