@@ -93,6 +93,10 @@ try {
     $extracted = 'Text extraction failed: ' . $e->getMessage();
 }
 
+// --- Normalize encoding to valid UTF-8 (fix emoji / special characters) ---
+$extracted = mb_convert_encoding($extracted, 'UTF-8', 'auto');
+$extracted = iconv('UTF-8', 'UTF-8//IGNORE', $extracted);
+
 // Save metadata and extracted text
 $record = new stdClass();
 $record->autogenquizid = $cm->instance;
@@ -102,7 +106,7 @@ $record->filesize = $storedfile->get_filesize();
 $record->filehash = $storedfile->get_contenthash();
 $record->status = 'uploaded';
 $record->timecreated = time();
-$record->confirmed_text = $extracted;
+$record->confirmed_text = trim($extracted);
 
 $fileid = $DB->insert_record('autogenquiz_files', $record, true);
 
