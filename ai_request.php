@@ -51,7 +51,7 @@ function autogenquiz_generate_tf_questions($text, $count) {
     PROMPT;
 
 $payload = json_encode([
-    'model' => 'phi3:mini',
+    'model' => 'mistral',
     'prompt' => $prompt,
     'stream' => false
 ]);

@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $raw = preg_replace('/: *true/', ': "True"', $raw);
     $raw = preg_replace('/: *false/', ': "False"', $raw);
     $raw = preg_replace('/([^\\\\])"s([^"]*?)"/', '$1\"s$2\"', $raw);
+    $raw = preg_replace('/"([^"]*)"\s*:\s*"([^"]*)"(?=[^"]*$)/', '"$1": "$2"', $raw);
+    $raw = preg_replace('/(?<!\\\\)"([a-zA-Z0-9\/\-\s]*?)"([a-zA-Z0-9])/','"$1\"$2',$raw);
+    $raw = preg_replace('/([a-zA-Z])"([a-zA-Z])/', '$1\"$2', $raw);
 
     if (preg_match('/(\[[\s\S]*?\])/', $raw, $m)) {
         $jsonstr = $m[1];
