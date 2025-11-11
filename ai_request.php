@@ -2,14 +2,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Send extracted text and parameters to local LLM API.
- *
- * @param string $text Extracted teaching material
- * @param string $question_type e.g. 'tf', 'mcq', 'short'
- * @param int $count number of questions
- * @return string raw JSON response or error message
+ * Generate True/False questions only
  */
-function autogenquiz_generate_questions($text, $question_type, $count) {
+function autogenquiz_generate_tf_questions($text, $count) {
     global $CFG;
 
     $configfile = __DIR__ . '/config_local.php';
@@ -22,64 +17,61 @@ function autogenquiz_generate_questions($text, $question_type, $count) {
         return json_encode(['error' => 'API URL not set.']);
     }
 
-    $system_prompt = <<<PROMPT
-You are an educational quiz generator.
-Your task is to create accurate, factual quiz questions from teaching materials.
+    $prompt = <<<PROMPT
+    You are a professional educational quiz generator.
 
-TASK:
-The following text comes from lecture slides or PDF pages.
-Each new section starts with a line like:
-[Slide 1] or [Page 1]
+    TASK:
+    Create exactly {$count} True/False (T/F) questions **only** from the provided text below.
+    - Output **exactly {$count}** items — no fewer, no more.
+    - Each question must be a clear factual statement (not a definition or open question).
+    - Avoid question marks (?) — write declarative statements only.
+    - Each must have one unambiguous answer: "True" or "False".
+    - Do NOT create open-ended or short-answer items.
+    - Do NOT include explanations or reasoning.
+    - If the text lacks enough material, create simple general statements still related to the topic.
 
-The text may have small typos, missing symbols, or broken line order.
-Read it carefully and infer the correct meaning before writing questions.
-Do NOT invent new information that isn't supported by the text.
-
-GOAL:
-Understand each [Slide] or [Page] as one topic.
-Use your best reasoning to correct small spelling or formula errors.
-Treat consecutive slides that discuss the same topic as part of one idea, but keep unrelated topics separate.
-Generate quiz questions based on the selected type: {$question_type}.
-Ensure all facts are scientifically or academically correct.
-Return only valid JSON — no explanations, no extra text.
-
-OUTPUT FORMAT:
-Return a JSON array.
-Each object must include:
-
-"id": integer
-"type": "{$question_type}"
-"question": string
-"options": array (for all types, may be empty for short answers)
-"answer": string or array depending on question type
-
-TEXT INPUT:
-{$text}
-PROMPT;
-
-    $payload = json_encode([
-        'model' => 'phi3:mini',
-        'prompt' => $system_prompt,
-        'stream' => false  // disable streaming mode
-    ]);
-
-    $response = '';
-    $curl = curl_init($AUTOGENQUIZ_API_URL);
-    curl_setopt_array($curl, [
-        CURLOPT_RETURNTRANSFER => true, // now we just wait for full JSON
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_TIMEOUT => 120
-    ]);
-
-    $response = curl_exec($curl);
-    if (curl_errno($curl)) {
-        $error = curl_error($curl);
-        curl_close($curl);
-        return json_encode(['error' => $error]);
+    OUTPUT FORMAT:
+    Return **only valid JSON**, nothing else.
+    Each object in the array must contain:
+    {
+    "id": <sequential number>,
+    "type": "tf",
+    "question": "<statement>",
+    "answer": "True" or "False"
     }
-    curl_close($curl);
 
-    return $response ?: json_encode(['error' => 'Empty response from API.']);
+    Example:
+    [
+    {"id":1,"type":"tf","question":"UX design focuses on improving user satisfaction.","answer":"True"},
+    {"id":2,"type":"tf","question":"Accessibility testing ignores user disabilities.","answer":"False"}
+    ]
+
+    TEXT SOURCE:
+    {$text}
+    PROMPT;
+
+$payload = json_encode([
+    'model' => 'phi3:mini',
+    'prompt' => $prompt,
+    'stream' => false
+]);
+
+$curl = curl_init($AUTOGENQUIZ_API_URL);
+curl_setopt_array($curl, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_TIMEOUT => 120
+]);
+
+$response = curl_exec($curl);
+if (curl_errno($curl)) {
+    $error = curl_error($curl);
+    curl_close($curl);
+    return json_encode(['error' => $error]);
+}
+curl_close($curl);
+
+return $response ?: json_encode(['error' => 'Empty response from API.']);
 }
