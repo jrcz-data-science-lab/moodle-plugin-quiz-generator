@@ -1,0 +1,77 @@
+<?php
+defined('MOODLE_INTERNAL') || die();
+
+/**
+ * Generate True/False questions only
+ */
+function autogenquiz_generate_tf_questions($text, $count) {
+    global $CFG;
+
+    $configfile = __DIR__ . '/config_local.php';
+    if (!file_exists($configfile)) {
+        return json_encode(['error' => 'config_local.php missing.']);
+    }
+
+    require($configfile);
+    if (empty($AUTOGENQUIZ_API_URL)) {
+        return json_encode(['error' => 'API URL not set.']);
+    }
+
+    $prompt = <<<PROMPT
+    You are a professional educational quiz generator.
+
+    TASK:
+    Create exactly {$count} True/False (T/F) questions **only** from the provided text below.
+    - Output **exactly {$count}** items — no fewer, no more.
+    - Each question must be a clear factual statement (not a definition or open question).
+    - Avoid question marks (?) — write declarative statements only.
+    - Each must have one unambiguous answer: "True" or "False".
+    - Do NOT create open-ended or short-answer items.
+    - Do NOT include explanations or reasoning.
+    - If the text lacks enough material, create simple general statements still related to the topic.
+
+    OUTPUT FORMAT:
+    Return **only valid JSON**, nothing else.
+    Each object in the array must contain:
+    {
+    "id": <sequential number>,
+    "type": "tf",
+    "question": "<statement>",
+    "answer": "True" or "False"
+    }
+
+    Example:
+    [
+    {"id":1,"type":"tf","question":"UX design focuses on improving user satisfaction.","answer":"True"},
+    {"id":2,"type":"tf","question":"Accessibility testing ignores user disabilities.","answer":"False"}
+    ]
+
+    TEXT SOURCE:
+    {$text}
+    PROMPT;
+
+$payload = json_encode([
+    'model' => 'mistral',
+    'prompt' => $prompt,
+    'stream' => false
+]);
+
+$curl = curl_init($AUTOGENQUIZ_API_URL);
+curl_setopt_array($curl, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_TIMEOUT => 120
+]);
+
+$response = curl_exec($curl);
+if (curl_errno($curl)) {
+    $error = curl_error($curl);
+    curl_close($curl);
+    return json_encode(['error' => $error]);
+}
+curl_close($curl);
+
+return $response ?: json_encode(['error' => 'Empty response from API.']);
+}
