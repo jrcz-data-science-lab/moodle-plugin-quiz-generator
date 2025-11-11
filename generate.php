@@ -25,8 +25,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $count = required_param('question_count', PARAM_INT);
     $result = autogenquiz_generate_questions($extracted, $type, $count);
 
-    echo html_writer::tag('h5', 'AI Response:');
-    echo html_writer::tag('pre', s($result), ['class' => 'bg-light p-3 border rounded']);
+    // Parse LLM JSON response
+    $data = json_decode($result, true);
+    $cleanjson = null;
+
+    if (isset($data['response'])) {
+        $raw = $data['response'];
+        $raw = preg_replace('/^```json\s*/', '', trim($raw));
+        $raw = preg_replace('/```$/', '', $raw);
+        $cleanjson = json_decode($raw, true);
+    } else {
+        $cleanjson = $data;
+    }
+
+    if (!is_array($cleanjson)) {
+        echo html_writer::tag('div', 'Failed to parse AI output.', ['class' => 'alert alert-danger']);
+    } else {
+        echo html_writer::start_tag('div', ['class' => 'mt-4']);
+        echo html_writer::tag('h5', 'Generated Questions:');
+        echo html_writer::start_tag('div', ['class' => 'list-group']);
+        foreach ($cleanjson as $q) {
+            $qid = $q['id'] ?? '?';
+            $type = strtoupper($q['type'] ?? 'unknown');
+            $question = s($q['question'] ?? '(no question)');
+            $options = $q['options'] ?? [];
+            $answer = $q['answer'] ?? [];
+
+            echo html_writer::start_div('list-group-item');
+            echo html_writer::tag('h6', "{$qid}. [{$type}] {$question}");
+            if ($options) {
+                echo html_writer::start_tag('ul', ['class' => 'mb-1']);
+                foreach ($options as $opt) {
+                    echo html_writer::tag('li', s($opt));
+                }
+                echo html_writer::end_tag('ul');
+            }
+            if ($answer) {
+                $ans = is_array($answer) ? implode(', ', $answer) : $answer;
+                echo html_writer::tag('p', '<strong>Answer:</strong> ' . s($ans), ['class' => 'text-success']);
+            }
+            echo html_writer::end_div();
+        }
+        echo html_writer::end_tag('div');
+        echo html_writer::end_tag('div');
+    }
     echo $OUTPUT->footer();
     exit;
 }
