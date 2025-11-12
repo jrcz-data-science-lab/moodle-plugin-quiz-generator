@@ -69,5 +69,29 @@ function xmldb_autogenquiz_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025110303, 'autogenquiz');
     }
 
+    if ($oldversion < 2025111201) {
+        $table = new xmldb_table('autogenquiz_generated');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('taskid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('rawtext', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('prompt', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('llm_response', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('parsed_response', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('is_approved', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('approved_by', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('approved_at', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('imported_to_bank', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('taskid_fk', XMLDB_KEY_FOREIGN, ['taskid'], 'autogenquiz_tasks', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2025111201, 'autogenquiz');
+    }
+
     return true;
 }

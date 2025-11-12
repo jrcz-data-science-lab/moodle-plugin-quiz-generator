@@ -51,7 +51,7 @@ function autogenquiz_generate_tf_questions($text, $count) {
     PROMPT;
 
 $payload = json_encode([
-    'model' => 'mistral',
+    'model' => 'gpt-oss:20b', // or use 'mistral'
     'prompt' => $prompt,
     'stream' => false
 ]);
