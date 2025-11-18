@@ -21,29 +21,31 @@ function autogenquiz_generate_tf_questions($text, $count) {
     You are a professional educational quiz generator.
 
     TASK:
-    Create exactly {$count} True/False (T/F) questions **only** from the provided text below.
-    - Output **exactly {$count}** items — no fewer, no more.
-    - Each question must be a clear factual statement (not a definition or open question).
-    - Avoid question marks (?) — write declarative statements only.
-    - Each must have one unambiguous answer: "True" or "False".
-    - Do NOT create open-ended or short-answer items.
-    - Do NOT include explanations or reasoning.
-    - If the text lacks enough material, create simple general statements still related to the topic.
+    Create exactly {$count} True/False (T/F) questions only from the provided text.
 
-    OUTPUT FORMAT:
-    Return **only valid JSON**, nothing else.
-    Each object in the array must contain:
+    STRICT JSON REQUIREMENTS:
+    - Output ONLY a valid JSON array.
+    - No code blocks.
+    - No explanations.
+    - No trailing commas.
+    - Every object must have commas between properties.
+    - Keys and strings MUST use double quotes.
+    - The final output MUST be a JSON array starting with `[` and ending with `]`.
+    - Validate your JSON before responding. If invalid, FIX IT before output.
+
+    STRICT JSON SCHEMA:
+    Each item in the array must be:
     {
-    "id": <sequential number>,
+    "id": <number>,
     "type": "tf",
     "question": "<statement>",
     "answer": "True" or "False"
     }
 
-    Example:
+    EXAMPLE (follow structure exactly):
     [
-    {"id":1,"type":"tf","question":"UX design focuses on improving user satisfaction.","answer":"True"},
-    {"id":2,"type":"tf","question":"Accessibility testing ignores user disabilities.","answer":"False"}
+    {"id":1,"type":"tf","question":"Example statement.","answer":"True"},
+    {"id":2,"type":"tf","question":"Another example.","answer":"False"}
     ]
 
     TEXT SOURCE:
@@ -51,7 +53,7 @@ function autogenquiz_generate_tf_questions($text, $count) {
     PROMPT;
 
 $payload = json_encode([
-    'model' => 'gpt-oss:20b', // or use 'mistral'
+    'model' => 'gpt-oss:20b', // or use 'mistral', 'gpt-oss:20b', etc. based on your setup
     'prompt' => $prompt,
     'stream' => false
 ]);

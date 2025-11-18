@@ -264,4 +264,7 @@ if ($files) {
     echo html_writer::end_div();
 }
 
+echo '<a href="' . new moodle_url('/question/edit.php', ['cmid' => $cm->id]) .
+     '" class="btn btn-outline-secondary mt-3">View Question Bank</a>';
+
 echo $OUTPUT->footer();
