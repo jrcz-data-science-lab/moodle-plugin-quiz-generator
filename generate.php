@@ -1,23 +1,28 @@
 <?php
-require('../../config.php');
-require_once(__DIR__ . '/ai_request.php');
 
-$id     = required_param('id', PARAM_INT);
+require '../../config.php'; // Loads Moodle environment
+require_once __DIR__.'/ai_request.php'; //  Loads the AI generation function
+
+// Read parameters
+$id = required_param('id', PARAM_INT);
 $fileid = optional_param('fileid', 0, PARAM_INT);
-$genid  = optional_param('genid', 0, PARAM_INT);
-$saved  = optional_param('saved', 0, PARAM_INT);
+$genid = optional_param('genid', 0, PARAM_INT);
+$saved = optional_param('saved', 0, PARAM_INT);
 
-$cm      = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
-$course  = get_course($cm->course);
-require_login($course, true, $cm);
+$cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
+$course = get_course($cm->course);
+
+require_login($course, true, $cm); // Require login
+
 $context = context_module::instance($cm->id);
-require_capability('mod/autogenquiz:view', $context);
+
+require_capability('mod/autogenquiz:view', $context); // Check view permission
 
 global $DB;
 
-// ----------------------------------------------------------------------------------
-// Resolve fileid from genid BEFORE ANY OUTPUT
-// ----------------------------------------------------------------------------------
+// Resolve fileid from genid
+// If user clicks a saved generation (genid), then system needs to find its associated file.
+// This step ensures the UI always knows which file the generation belongs to.
 if (!$fileid && $genid) {
     $rec = $DB->get_record('autogenquiz_generated', ['id' => $genid]);
     if ($rec) {
@@ -28,21 +33,17 @@ if (!$fileid && $genid) {
     }
 }
 
-// ----------------------------------------------------------------------------------
-// If still no fileid → redirect BEFORE header
-// ----------------------------------------------------------------------------------
+// Redirect if fileid is missing
 if (!$fileid) {
     redirect(
         new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]),
         'Missing file reference. Please re-upload the file.',
         null,
-        \core\output\notification::NOTIFY_ERROR
+        core\output\notification::NOTIFY_ERROR
     );
 }
 
-// ----------------------------------------------------------------------------------
-// Now safe to output header()
-// ----------------------------------------------------------------------------------
+// output: page header, heading, "View Question Bank" button
 $PAGE->set_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $fileid]);
 $PAGE->set_title('AutoGenQuiz - Generate');
 $PAGE->set_heading('Generate True/False Questions');
@@ -50,21 +51,20 @@ $PAGE->set_heading('Generate True/False Questions');
 echo $OUTPUT->header();
 echo $OUTPUT->heading('AutoGenQuiz Generator');
 
-echo '<a href="' . new moodle_url('/question/edit.php', ['cmid' => $cm->id]) .
-     '" class="btn btn-outline-secondary mb-3">View Question Bank</a>';
+echo '<a href="'.new moodle_url('/question/edit.php', ['cmid' => $cm->id]).
+    '" class="btn btn-outline-secondary mb-3">View Question Bank</a>';
 
+// Show success message after saving
 if ($saved) {
-    echo $OUTPUT->notification('Changes saved successfully.', \core\output\notification::NOTIFY_SUCCESS);
+    echo $OUTPUT->notification('Changes saved successfully.', core\output\notification::NOTIFY_SUCCESS);
 }
 
-// ----------------------------------------------------------------------------------
 // Editable form for showing AI-generated questions
-// ----------------------------------------------------------------------------------
-function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson, int $cmid): void {
-
+function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson, int $cmid): void
+{
     echo html_writer::start_tag('form', [
         'method' => 'post',
-        'action' => new moodle_url('/mod/autogenquiz/save_generated.php')
+        'action' => new moodle_url('/mod/autogenquiz/save_generated.php'),
     ]);
 
     echo html_writer::input_hidden_params(
@@ -72,19 +72,22 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
             'genid' => $genid,
             'id' => $id,
             'fileid' => $fileid,
-            'sesskey' => sesskey()
+            'sesskey' => sesskey(),
         ])
     );
 
     echo '<div id="question-list">';
     $i = 1;
 
+    // one card per question
     foreach ($cleanjson as $q) {
         $qtext = s(trim($q['question'] ?? ''));
-        if ($qtext === '') continue;
+        if ($qtext === '') {
+            continue;
+        }
 
         $ans = ucfirst(strtolower(trim($q['answer'] ?? 'True')));
-        if (!in_array($ans, ['True','False'], true)) {
+        if (!in_array($ans, ['True', 'False'], true)) {
             $ans = 'True';
         }
 
@@ -99,13 +102,14 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
         echo '<div class="mt-2"><label class="me-2 fw-semibold">Answer:</label>';
         echo '<select name="questions['.$i.'][answer]" class="form-select d-inline-block" style="width:auto;">';
 
-        foreach (['True','False'] as $opt) {
+        // dropdown for answer (True/False)
+        foreach (['True', 'False'] as $opt) {
             $sel = $ans === $opt ? ' selected' : '';
             echo '<option value="'.$opt.'"'.$sel.'>'.$opt.'</option>';
         }
 
         echo '</select></div></div>';
-        $i++;
+        ++$i;
     }
 
     echo '</div>';
@@ -116,19 +120,20 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
     // Import button
     $importurl = new moodle_url('/mod/autogenquiz/import_to_bank.php', [
         'genid' => $genid,
-        'id' => $id
+        'id' => $id,
     ]);
     echo '<a href="'.$importurl.'" class="btn btn-success">Import to Question Bank</a>';
 
     // View plugin’s private question bank
-    echo '<a href="' . new moodle_url('/question/edit.php', ['cmid' => $cmid]) .
-         '" class="btn btn-secondary ms-2">View Question Bank</a>';
+    echo '<a href="'.new moodle_url('/question/edit.php', ['cmid' => $cmid]).
+        '" class="btn btn-secondary ms-2">View Question Bank</a>';
 
     echo '</div>';
 
     echo html_writer::end_tag('form');
 
     echo <<<JS
+
 <script>
 function removeQuestion(id) {
     const el = document.getElementById('q_' + id);
@@ -138,9 +143,7 @@ function removeQuestion(id) {
 JS;
 }
 
-// ----------------------------------------------------------------------------------
-// Form BEFORE generating questions
-// ----------------------------------------------------------------------------------
+// Form: Before generating, user enters the number of questions. This posts back to the same page.
 $formurl = new moodle_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $fileid]);
 
 echo '<div class="card mb-3"><div class="card-body">';
@@ -152,67 +155,75 @@ echo '<input type="number" name="question_count" class="form-control" min="1" ma
 echo '<input type="hidden" name="fileid" value="'.$fileid.'">';
 
 echo '<button type="submit" class="btn btn-primary">Generate True/False</button>';
-echo '<a href="'.new moodle_url('/mod/autogenquiz/view.php',['id'=>$id]).'" class="btn btn-secondary ms-2">Back</a>';
+echo '<a href="'.new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]).'" class="btn btn-secondary ms-2">Back</a>';
 
 echo '</form></div></div>';
 
-// ----------------------------------------------------------------------------------
-// POST: generate questions
-// ----------------------------------------------------------------------------------
+// Handle POST = generate new questions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $count = required_param('question_count', PARAM_INT);
-    $fid   = required_param('fileid', PARAM_INT);
+    $count = required_param('question_count', PARAM_INT); // Read number of questions
+    $fid = required_param('fileid', PARAM_INT);
 
     $file = $DB->get_record('autogenquiz_files', ['id' => $fid]);
     if (!$file) {
-        echo $OUTPUT->notification('Source file is missing.', \core\output\notification::NOTIFY_ERROR);
+        echo $OUTPUT->notification('Source file is missing.', core\output\notification::NOTIFY_ERROR);
         echo $OUTPUT->footer();
         exit;
     }
 
+    // Create a task record
     $task = (object) [
         'fileid' => $fid,
         'courseid' => $course->id,
         'status' => 'sent_request',
         'created_at' => time(),
-        'updated_at' => time()
+        'updated_at' => time(),
     ];
     $taskid = $DB->insert_record('autogenquiz_tasks', $task, true);
 
+    // Call AI generation function
     $res = autogenquiz_generate_tf_questions($file->confirmed_text, $count);
     $data = json_decode($res, true);
 
+    // Parse AI response
     $raw = $data['response'] ?? $data['message']['content'] ?? $res;
-    $raw = trim(preg_replace(['/^```(json)?/i','/```$/'], '', $raw));
+    $raw = trim(preg_replace(['/^```(json)?/i', '/```$/'], '', $raw));
 
+    // Try to decode JSON
     $arr = json_decode($raw, true);
     if (!is_array($arr) && preg_match('/\[[\s\S]*\]/', $raw, $m)) {
         $arr = json_decode($m[0], true);
     }
 
+    // Error if parsing failed
     if (!is_array($arr)) {
-        echo $OUTPUT->notification('Failed to parse AI output.', \core\output\notification::NOTIFY_ERROR);
+        echo $OUTPUT->notification('Failed to parse AI output.', core\output\notification::NOTIFY_ERROR);
         echo '<pre>'.s($raw).'</pre>';
         echo $OUTPUT->footer();
         exit;
     }
 
+    // Ensure each question has type and answer
     foreach ($arr as &$q) {
         $q['type'] = 'tf';
-        if (!isset($q['answer'])) $q['answer'] = 'True';
+        if (!isset($q['answer'])) {
+            $q['answer'] = 'True';
+        }
     }
 
+    // Save generation record
     $gen = (object) [
         'taskid' => $taskid,
         'rawtext' => $file->confirmed_text,
         'llm_response' => $res,
         'parsed_response' => json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
         'is_approved' => 0,
-        'imported_to_bank' => 0
+        'imported_to_bank' => 0,
     ];
+    // Insert into autogenquiz_generated table
     $newid = $DB->insert_record('autogenquiz_generated', $gen, true);
 
+    // output: generated questions in editable form
     echo html_writer::tag('h5', 'Generated Questions');
     render_editable_form($id, $fid, $newid, $arr, $cm->id);
 
@@ -220,9 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// ----------------------------------------------------------------------------------
-// View saved generation
-// ----------------------------------------------------------------------------------
+// If genid is provided, load and show saved generation
 if ($genid) {
     $rec = $DB->get_record('autogenquiz_generated', ['id' => $genid], '*', IGNORE_MISSING);
     if ($rec) {
@@ -230,7 +239,7 @@ if ($genid) {
         echo html_writer::tag('h5', 'Generated Questions');
         render_editable_form($id, $fileid, $rec->id, $arr, $cm->id);
     } else {
-        echo $OUTPUT->notification('Generation record not found.', \core\output\notification::NOTIFY_ERROR);
+        echo $OUTPUT->notification('Generation record not found.', core\output\notification::NOTIFY_ERROR);
     }
 }
 

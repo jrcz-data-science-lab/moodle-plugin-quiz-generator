@@ -1,22 +1,29 @@
 <?php
-defined('MOODLE_INTERNAL') || die();
+
+defined('MOODLE_INTERNAL') || exit;
 
 /**
- * Generate True/False questions only
+ * Generate True/False questions only.
+ * $text = extracted + confirmed text
+ * $count = number of questions to generate.
  */
-function autogenquiz_generate_tf_questions($text, $count) {
+function autogenquiz_generate_tf_questions($text, $count)
+{
     global $CFG;
 
-    $configfile = __DIR__ . '/config_local.php';
+    $configfile = __DIR__.'/config_local.php'; // Load config_local.php
     if (!file_exists($configfile)) {
         return json_encode(['error' => 'config_local.php missing.']);
     }
 
-    require($configfile);
+    require $configfile;
+
+    // Check that API URL is valid
     if (empty($AUTOGENQUIZ_API_URL)) {
         return json_encode(['error' => 'API URL not set.']);
     }
 
+    // Build the AI prompt
     $prompt = <<<PROMPT
     You are a professional educational quiz generator.
 
@@ -52,28 +59,35 @@ function autogenquiz_generate_tf_questions($text, $count) {
     {$text}
     PROMPT;
 
-$payload = json_encode([
-    'model' => 'gpt-oss:20b', // or use 'mistral', 'gpt-oss:20b', etc. based on your setup
-    'prompt' => $prompt,
-    'stream' => false
-]);
+    // Build the JSON payload for the AI server
+    $payload = json_encode([
+        'model' => 'gpt-oss:20b', // use 'mistral' or 'gpt-oss:20b', based on setup
+        'prompt' => $prompt,
+        'stream' => false,
+    ]);
 
-$curl = curl_init($AUTOGENQUIZ_API_URL);
-curl_setopt_array($curl, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_TIMEOUT => 120
-]);
+    // Send the request to the AI server using cURL:
+    // POST request, JSON body, 120-second timeout, Returns response as string
+    $curl = curl_init($AUTOGENQUIZ_API_URL);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 120,
+    ]);
 
-$response = curl_exec($curl);
-if (curl_errno($curl)) {
-    $error = curl_error($curl);
+    // Execute request + error handling:
+    // If cURL fails: server unreachable, timeout, DNS error, SSL issue → returns a JSON error object.
+    $response = curl_exec($curl);
+    if (curl_errno($curl)) {
+        $error = curl_error($curl);
+        curl_close($curl);
+
+        return json_encode(['error' => $error]);
+    }
     curl_close($curl);
-    return json_encode(['error' => $error]);
-}
-curl_close($curl);
 
-return $response ?: json_encode(['error' => 'Empty response from API.']);
+    // Return API response: If the server returned empty or null → send error. Otherwise → return the AI response as-is.
+    return $response ?: json_encode(['error' => 'Empty response from API.']);
 }
