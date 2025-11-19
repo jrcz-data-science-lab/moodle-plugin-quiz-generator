@@ -1,4 +1,5 @@
 <?php
+
 $string['modulename'] = 'AutoGenQuiz';
 $string['modulenameplural'] = 'AutoGenQuizzes';
 $string['pluginname'] = 'AutoGenQuiz';

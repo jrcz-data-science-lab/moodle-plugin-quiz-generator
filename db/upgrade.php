@@ -1,13 +1,16 @@
 <?php
-defined('MOODLE_INTERNAL') || die();
+
+defined('MOODLE_INTERNAL') || exit;
 
 /**
- * Upgrade steps for mod_autogenquiz
+ * Upgrade steps for mod_autogenquiz.
  *
  * @param int $oldversion
+ *
  * @return bool
  */
-function xmldb_autogenquiz_upgrade($oldversion) {
+function xmldb_autogenquiz_upgrade($oldversion)
+{
     global $DB;
 
     $dbman = $DB->get_manager();
