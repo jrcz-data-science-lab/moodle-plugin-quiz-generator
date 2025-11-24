@@ -25,10 +25,21 @@ function autogenquiz_generate_tf_questions($text, $count)
 
     // Build the AI prompt
     $prompt = <<<PROMPT
-    You are a professional educational quiz generator.
+        You are a professional educational quiz generator.
 
     TASK:
     Create exactly {$count} True/False (T/F) questions only from the provided text.
+
+    IMPORTANT CONTENT RULES:
+    - First identify the most likely academic subject area (e.g., psychology, engineering, business, biology, computer science).
+    - Use ONLY content that is academic, instructional, or related to the course subject.
+    - Completely ignore all non-academic or irrelevant content, including:
+      * jokes or humor
+      * teacher personal information, hobbies, self-introductions
+      * student attendance, pass rates, or classroom statistics
+      * course logistics, announcements, or administrative notes
+      * any slide text not related to the subject's concepts
+    - Focus ONLY on definitions, theories, principles, frameworks, processes, domain concepts, and instructional examples.
 
     STRICT JSON REQUIREMENTS:
     - Output ONLY a valid JSON array.
@@ -57,6 +68,7 @@ function autogenquiz_generate_tf_questions($text, $count)
 
     TEXT SOURCE:
     {$text}
+
     PROMPT;
 
     // Build the JSON payload for the AI server
