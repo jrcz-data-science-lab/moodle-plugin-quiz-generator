@@ -27,32 +27,55 @@ function autogenquiz_generate_tf_questions($text, $count)
     $prompt = <<<PROMPT
     You are a professional educational quiz generator.
 
-    TASK:
-    Create exactly {$count} True/False (T/F) questions only from the provided text.
+    TASK (VERY IMPORTANT):
+    - Create exactly {$count} True/False (T/F) questions ONLY from the TEXT SOURCE.
+    - Your ENTIRE reply must be ONE JSON array. No text before or after the array.
 
-    STRICT JSON REQUIREMENTS:
+    WHAT IS A T/F QUESTION?
+    - The "question" field MUST be a factual statement, not a question sentence.
+    - It should normally NOT end with a question mark "?".
+    - Example of VALID T/F statement:
+    "Git is a distributed version control system."
+    - INVALID (DO NOT DO THIS):
+    "What is Git?"
+
+    STRICT JSON OUTPUT:
     - Output ONLY a valid JSON array.
-    - No code blocks.
-    - No explanations.
-    - No trailing commas.
-    - Every object must have commas between properties.
-    - Keys and strings MUST use double quotes.
-    - The final output MUST be a JSON array starting with `[` and ending with `]`.
-    - Validate your JSON before responding. If invalid, FIX IT before output.
+    - No markdown, no code blocks, no summaries, no explanations.
+    - No extra keys, no trailing commas.
+    - Keys and all string values MUST use double quotes.
+    - The output MUST start with "[" and end with "]".
 
-    STRICT JSON SCHEMA:
-    Each item in the array must be:
+    STRICT JSON SCHEMA (USE ONLY THESE 4 KEYS):
+    Each item in the array MUST be:
     {
-    "id": <number>,
-    "type": "tf",
-    "question": "<statement>",
-    "answer": "True" or "False"
+    "id": <number>,               // 1,2,3,...
+    "type": "tf",                 // always exactly "tf"
+    "question": "<statement>",    // factual statement, no "?" at the end
+    "answer": "True" or "False"   // MUST be exactly one of these two strings
     }
 
-    EXAMPLE (follow structure exactly):
+    - NEVER put explanations in "answer".
+    - "answer" MUST be EXACTLY "True" or "False" (capital T/F, no extra text).
+
+    ANSWER VALIDATION:
+    - Before output, check each statement using the TEXT SOURCE.
+    - If the statement is correct according to the text, use "True".
+    - If the statement contradicts the text, use "False".
+    - Do NOT guess: if you are not sure, do not use that statement.
+
+    CONTENT FILTER RULES:
+    - First infer the most likely academic subject area.
+    - Use ONLY academic / instructional content:
+    definitions, theories, principles, frameworks, processes, domain concepts, and relevant examples.
+    - Completely ignore:
+    jokes, personal information, hobbies, pass rates, attendance, classroom statistics,
+    course logistics, announcements, or any non-subject-related text.
+
+    EXAMPLE (FOLLOW STRUCTURE EXACTLY):
     [
-    {"id":1,"type":"tf","question":"Example statement.","answer":"True"},
-    {"id":2,"type":"tf","question":"Another example.","answer":"False"}
+    {"id":1,"type":"tf","question":"Git is a distributed version control system.","answer":"True"},
+    {"id":2,"type":"tf","question":"GitHub and Git are the same tool.","answer":"False"}
     ]
 
     TEXT SOURCE:
@@ -61,7 +84,7 @@ function autogenquiz_generate_tf_questions($text, $count)
 
     // Build the JSON payload for the AI server
     $payload = json_encode([
-        'model' => 'gpt-oss:20b', // use 'mistral' or 'gpt-oss:20b', based on setup
+        'model' => 'llama3.1:8b', // use 'llama3.1:8b' or 'gpt-oss:20b', based on setup
         'prompt' => $prompt,
         'stream' => false,
     ]);
@@ -84,10 +107,10 @@ function autogenquiz_generate_tf_questions($text, $count)
         $error = curl_error($curl);
         curl_close($curl);
 
-        return json_encode(['error' => $error]);
+        return json_encode(['connection_error' => true, 'error' => $error]);
     }
     curl_close($curl);
 
     // Return API response: If the server returned empty or null → send error. Otherwise → return the AI response as-is.
-    return $response ?: json_encode(['error' => 'Empty response from API.']);
+    return $response ?: json_encode(['connection_error' => true, 'error' => 'Empty response from API.']);
 }

@@ -84,7 +84,7 @@ echo $OUTPUT->heading('');
                     <p class="mb-1"><strong>Before uploading:</strong></p>
                     <ul>
                         <li>Accepted file formats: <strong>PDF (.pdf)</strong> or <strong>PowerPoint (.pptx)</strong>.</li>
-                        <li>Maximum file size: <strong>10 MB</strong>.</li>
+                        <li>Maximum file size: <strong>80 MB</strong>.</li>
                         <li>Upload <strong>only one file</strong> at a time.</li>
                     </ul>
                     <p class="mt-3 mb-1"><strong>After uploading:</strong></p>
@@ -146,7 +146,7 @@ const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 ];
-const maxFileSize = 10 * 1024 * 1024; // 10MB
+const maxFileSize = 80 * 1024 * 1024; // 80MB
 
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('quizfile');
@@ -236,7 +236,7 @@ if ($files) {
             'name' => 'confirmed_text',
             'rows' => 6,
             'class' => 'form-control mb-2 border-0 bg-transparent',
-            'style' => 'resize:none; cursor:default; outline:none; pointer-events:none;',
+            'style' => 'resize:none; cursor:default; outline:none; overflow:auto;',
             'readonly' => 'readonly',
         ]);
         $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'fileid', 'value' => $file->id]);
