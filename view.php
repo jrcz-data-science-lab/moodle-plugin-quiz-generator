@@ -236,7 +236,7 @@ if ($files) {
             'name' => 'confirmed_text',
             'rows' => 6,
             'class' => 'form-control mb-2 border-0 bg-transparent',
-            'style' => 'resize:none; cursor:default; outline:none; pointer-events:none;',
+            'style' => 'resize:none; cursor:default; outline:none; overflow:auto;',
             'readonly' => 'readonly',
         ]);
         $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'fileid', 'value' => $file->id]);
