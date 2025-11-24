@@ -61,7 +61,7 @@ function autogenquiz_generate_tf_questions($text, $count)
 
     // Build the JSON payload for the AI server
     $payload = json_encode([
-        'model' => 'gpt-oss:20b', // use 'mistral' or 'gpt-oss:20b', based on setup
+        'model' => 'mistral', // use 'mistral' or 'gpt-oss:20b', based on setup
         'prompt' => $prompt,
         'stream' => false,
     ]);

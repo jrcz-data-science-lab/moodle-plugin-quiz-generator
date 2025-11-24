@@ -32,7 +32,7 @@ $allowedtypes = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
-$maxbytes = 10 * 1024 * 1024; // 10MB
+$maxbytes = 80 * 1024 * 1024; // 80MB
 
 if ($file['error'] !== UPLOAD_ERR_OK) {
     throw new moodle_exception('Upload failed. Error code: '.$file['error']);
