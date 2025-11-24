@@ -50,6 +50,10 @@ $PAGE->set_heading('Generate True/False Questions');
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading('AutoGenQuiz Generator');
+echo '<div class="alert alert-info mt-2">
+    Generating questions may take up to one minute depending on the server connection. 
+    If it is unusually slow, please contact the LLM administrator or the technical department.
+</div>';
 
 echo '<a href="'.new moodle_url('/question/edit.php', ['cmid' => $cm->id]).
     '" class="btn btn-outline-secondary mb-3">View Question Bank</a>';
@@ -184,6 +188,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Call AI generation function
     $res = autogenquiz_generate_tf_questions($file->confirmed_text, $count);
     $data = json_decode($res, true);
+
+    if (!empty($data['connection_error'])) {
+        echo '<div class="alert alert-danger mt-2">
+        The system could not connect to the question-generation server. 
+        This plugin is temporarily unavailable. Please contact the LLM administrator or technical department.
+    </div>';
+
+        echo $OUTPUT->footer();
+        exit;
+    }
 
     // Parse AI response
     $raw = $data['response'] ?? $data['message']['content'] ?? $res;

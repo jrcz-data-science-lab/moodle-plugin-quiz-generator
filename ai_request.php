@@ -84,10 +84,10 @@ function autogenquiz_generate_tf_questions($text, $count)
         $error = curl_error($curl);
         curl_close($curl);
 
-        return json_encode(['error' => $error]);
+        return json_encode(['connection_error' => true, 'error' => $error]);
     }
     curl_close($curl);
 
     // Return API response: If the server returned empty or null → send error. Otherwise → return the AI response as-is.
-    return $response ?: json_encode(['error' => 'Empty response from API.']);
+    return $response ?: json_encode(['connection_error' => true, 'error' => 'Empty response from API.']);
 }
