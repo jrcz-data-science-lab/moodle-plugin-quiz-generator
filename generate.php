@@ -169,6 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fid = required_param('fileid', PARAM_INT);
 
     $file = $DB->get_record('autogenquiz_files', ['id' => $fid]);
+
     if (!$file) {
         echo $OUTPUT->notification('Source file is missing.', core\output\notification::NOTIFY_ERROR);
         echo $OUTPUT->footer();
