@@ -55,9 +55,6 @@ echo '<div class="alert alert-info mt-2">
     If it is unusually slow, please contact the LLM administrator or the technical department.
 </div>';
 
-echo '<a href="'.new moodle_url('/question/edit.php', ['cmid' => $cm->id]).
-    '" class="btn btn-outline-secondary mb-3">View Question Bank</a>';
-
 // Show success message after saving
 if ($saved) {
     echo $OUTPUT->notification('Changes saved successfully.', core\output\notification::NOTIFY_SUCCESS);
@@ -127,10 +124,6 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
         'id' => $id,
     ]);
     echo '<a href="'.$importurl.'" class="btn btn-success">Import to Question Bank</a>';
-
-    // View plugin’s private question bank
-    echo '<a href="'.new moodle_url('/question/edit.php', ['cmid' => $cmid]).
-        '" class="btn btn-secondary ms-2">View Question Bank</a>';
 
     echo '</div>';
 
