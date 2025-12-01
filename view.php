@@ -72,10 +72,18 @@ echo $OUTPUT->heading('');
 
             <!-- Collapsible Instruction Section -->
             <div class="upload-instructions border rounded mb-3">
-                <div class="instruction-header bg-light d-flex justify-content-between align-items-center px-3 py-2" 
+                <div class="instruction-header bg-light d-flex justify-content-between align-items-center px-3 py-2"
                     style="cursor: pointer;" onclick="toggleInstruction()">
-                    <h5 class="fw-bold mb-0 text-danger">Click to learn about AutoGenQuiz</h5>
-                    <span id="toggle-icon" style="font-size: 18px;">&#9654;</span> <!-- ▶ right arrow -->
+
+                    <p class="mb-0" style="font-size: 15px; color:#333;">
+                        Only accept <span style="color:#0d6efd; font-weight:600;">PDF (.pdf)</span> or
+                        <span style="color:#0d6efd; font-weight:600;">PowerPoint (.pptx)</span>;
+                        the maximum file size is <span style="color:#0d6efd; font-weight:600;">80 MB</span>.<br>
+                        Click <span style="color:#0d6efd; font-weight:600;">‘Ready’</span> to move to the next step.<br><br>
+                        <span class="text-muted">For more details, please click the triangle button.</span>
+                    </p>
+
+                    <span id="toggle-icon" style="font-size: 18px;">&#9654;</span>
                 </div>
                 <div id="instruction-content" class="instruction-content" style="display: none; padding: 15px 20px;">
                     <p>
@@ -106,14 +114,18 @@ echo $OUTPUT->heading('');
             function toggleInstruction() {
                 const content = document.getElementById('instruction-content');
                 const icon = document.getElementById('toggle-icon');
+                const headerText = document.querySelector('.instruction-header p');
+
                 const isHidden = content.style.display === 'none';
 
                 if (isHidden) {
                     content.style.display = 'block';
-                    icon.innerHTML = '&#9660;'; // ▼ down arrow
+                    icon.innerHTML = '&#9660;'; // ▼
+                    headerText.style.display = 'none';   // hide short text
                 } else {
                     content.style.display = 'none';
-                    icon.innerHTML = '&#9654;'; // ▶ right arrow
+                    icon.innerHTML = '&#9654;'; // ▶
+                    headerText.style.display = 'block';  // show short text
                 }
             }
             </script>

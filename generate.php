@@ -50,6 +50,64 @@ $PAGE->set_heading('Generate True/False Questions');
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading('AutoGenQuiz Generator');
+
+echo '
+<div class="upload-instructions border rounded mb-3" 
+    style="background:#f8f9fa; border-left:5px solid #0d6efd;">
+
+    <!-- Header -->
+    <div class="instruction-header bg-light d-flex justify-content-between align-items-center px-3 py-2"
+        style="cursor:pointer;" onclick="toggleGenInstruction()">
+
+        <!-- Short instruction (visible ONLY when collapsed) -->
+        <p id="gen-short-text" class="mb-0" style="font-size:15px; color:#333; display:block;">
+            Click <strong style="color:#0d6efd;">Generate</strong> to create questions.
+            You may edit the generated questions and click 
+            <strong style="color:#0d6efd;">Save Changes</strong> to confirm.
+            Or click <strong style="color:#0d6efd;">Import to Question Bank</strong> directly to save them.<br><br>
+            <span class="text-muted">For more details, click the triangle.</span>
+        </p>
+
+        <span id="gen-toggle-icon" style="font-size:18px;">&#9654;</span>
+    </div>
+
+    <!-- Expanded content (visible ONLY when expanded) -->
+    <div id="gen-instruction-content" style="display:none; padding:15px 20px;">
+        <p>The system generates <strong style="color:#0d6efd;">10 questions by default</strong>, 
+        but you may enter any number you prefer.</p>
+
+        <p>All generated questions can be edited — please verify each answer instead of fully relying on the AI.</p>
+
+        <p>After editing, click <strong style="color:#0d6efd;">Save Changes</strong> to store your updates.</p>
+
+        <p>Whether you edit the questions or not, you can always click
+        <strong style="color:#0d6efd;">Import to Question Bank</strong> to save them.</p>
+    </div>
+</div>
+
+<script>
+function toggleGenInstruction() {
+    const content = document.getElementById("gen-instruction-content");
+    const shortText = document.getElementById("gen-short-text");
+    const icon = document.getElementById("gen-toggle-icon");
+
+    const isHidden = content.style.display === "none";
+
+    if (isHidden) {
+        // expand
+        content.style.display = "block";
+        shortText.style.display = "none";
+        icon.innerHTML = "&#9660;";   // ▼
+    } else {
+        // collapse
+        content.style.display = "none";
+        shortText.style.display = "block";
+        icon.innerHTML = "&#9654;";   // ▶
+    }
+}
+</script>
+';
+
 echo '<div class="alert alert-info mt-2">
     Generating questions may take up to one minute depending on the server connection. 
     If it is unusually slow, please contact the LLM administrator or the technical department.
@@ -147,11 +205,23 @@ echo '<div class="card mb-3"><div class="card-body">';
 echo '<form method="post" action="'.$formurl.'">';
 
 echo '<div class="mb-3"><label class="form-label fw-semibold">Number of True/False Questions</label>';
-echo '<input type="number" name="question_count" class="form-control" min="1" max="20" value="5" required></div>';
+echo '<input type="number" name="question_count" class="form-control" min="1" max="20" value="10" required></div>';
 
 echo '<input type="hidden" name="fileid" value="'.$fileid.'">';
 
-echo '<button type="submit" class="btn btn-primary">Generate True/False</button>';
+echo '<button type="submit" id="genbtn" class="btn btn-primary">
+        Generate True/False
+    </button>';
+
+echo '
+<script>
+document.getElementById("genbtn").addEventListener("click", function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = \'<span class="spinner-border spinner-border-sm me-2"></span>Generating...\';
+});
+</script>
+';
 echo '<a href="'.new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]).'" class="btn btn-secondary ms-2">Back</a>';
 
 echo '</form></div></div>';
