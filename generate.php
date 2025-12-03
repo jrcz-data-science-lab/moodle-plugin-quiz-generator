@@ -202,7 +202,7 @@ JS;
 $formurl = new moodle_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $fileid]);
 
 echo '<div class="card mb-3"><div class="card-body">';
-echo '<form method="post" action="'.$formurl.'">';
+echo '<form method="post" action="'.$formurl.'" id="generateForm">';
 
 echo '<div class="mb-3"><label class="form-label fw-semibold">Number of True/False Questions</label>';
 echo '<input type="number" name="question_count" class="form-control" min="1" max="20" value="10" required></div>';
@@ -213,18 +213,39 @@ echo '<button type="submit" id="genbtn" class="btn btn-primary">
         Generate True/False
     </button>';
 
-echo '
-<script>
-document.getElementById("genbtn").addEventListener("click", function() {
-    const btn = this;
-    btn.disabled = true;
-    btn.innerHTML = \'<span class="spinner-border spinner-border-sm me-2"></span>Generating...\';
-});
-</script>
-';
 echo '<a href="'.new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]).'" class="btn btn-secondary ms-2">Back</a>';
 
 echo '</form></div></div>';
+
+echo '
+<script>
+// Show loading overlay on form submission
+(function() {
+    const form = document.getElementById("generateForm");
+    
+    if (form) {
+        form.addEventListener("submit", function(e) {
+            // Only show overlay if form is valid
+            if (form.checkValidity()) {
+                // Create overlay
+                const overlay = document.createElement("div");
+                overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(255,255,255,0.9); z-index:9999; display:flex; align-items:center; justify-content:center;";
+                overlay.innerHTML = \'<div class="card shadow-lg" style="max-width:400px;">'.
+                    '<div class="card-body text-center p-4">'.
+                    '<div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>'.
+                    '<h5 class="card-title mb-2">Processing</h5>'.
+                    '<p class="card-text">Generating questions from your document.<br>This process may take up to one minute. Please do not close this page.</p>'.
+                    '</div></div>\';
+                overlay.id = "loadingOverlay";
+                document.body.appendChild(overlay);
+            }
+            // Allow form to submit normally
+            return true;
+        });
+    }
+})();
+</script>
+';
 
 // Handle POST = generate new questions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
