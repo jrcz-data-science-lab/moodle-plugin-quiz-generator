@@ -17,50 +17,52 @@ echo $OUTPUT->heading('');
 ?>
 
 <style>
-/* --- Instruction and Modal Styling --- */
-.upload-instructions {
-    background: #f8f9fa;
-    border-left: 5px solid #0d6efd;
-    border-radius: 10px;
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    font-size: 15px;
-    color: #333;
-}
+    /* --- Instruction and Modal Styling --- */
+    .upload-instructions {
+        background: #f8f9fa;
+        border-left: 5px solid #0d6efd;
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        font-size: 15px;
+        color: #333;
+    }
 
-.upload-instructions strong {
-    color: #0d6efd;
-}
+    .upload-instructions strong {
+        color: #0d6efd;
+    }
 
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1050;
-    justify-content: center;
-    align-items: center;
-}
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+        justify-content: center;
+        align-items: center;
+    }
 
-.modal-box {
-    background: white;
-    border-radius: 12px;
-    padding: 25px 30px;
-    max-width: 400px;
-    text-align: center;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
+    .modal-box {
+        background: white;
+        border-radius: 12px;
+        padding: 25px 30px;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
 
-.modal-box h5 {
-    color: #dc3545;
-    font-weight: bold;
-    margin-bottom: 15px;
-}
+    .modal-box h5 {
+        color: #dc3545;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
 
-.modal-box button {
-    margin-top: 10px;
-}
+    .modal-box button {
+        margin-top: 10px;
+    }
 </style>
 
 <div class="container mt-4">
@@ -111,23 +113,23 @@ echo $OUTPUT->heading('');
 
             <!-- JavaScript for foldable Instructions -->
             <script>
-            function toggleInstruction() {
-                const content = document.getElementById('instruction-content');
-                const icon = document.getElementById('toggle-icon');
-                const headerText = document.querySelector('.instruction-header p');
+                function toggleInstruction() {
+                    const content = document.getElementById('instruction-content');
+                    const icon = document.getElementById('toggle-icon');
+                    const headerText = document.querySelector('.instruction-header p');
 
-                const isHidden = content.style.display === 'none';
+                    const isHidden = content.style.display === 'none';
 
-                if (isHidden) {
-                    content.style.display = 'block';
-                    icon.innerHTML = '&#9660;'; // ▼
-                    headerText.style.display = 'none';   // hide short text
-                } else {
-                    content.style.display = 'none';
-                    icon.innerHTML = '&#9654;'; // ▶
-                    headerText.style.display = 'block';  // show short text
+                    if (isHidden) {
+                        content.style.display = 'block';
+                        icon.innerHTML = '&#9660;'; // ▼
+                        headerText.style.display = 'none'; // hide short text
+                    } else {
+                        content.style.display = 'none';
+                        icon.innerHTML = '&#9654;'; // ▶
+                        headerText.style.display = 'block'; // show short text
+                    }
                 }
-            }
             </script>
 
             <!-- Upload Form -->
@@ -154,45 +156,45 @@ echo $OUTPUT->heading('');
 
 <!-- validation: exactly one file, correct mimetype, max size 10 MB, show a modal dialog if the file is invalid -->
 <script>
-const allowedTypes = [
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-];
-const maxFileSize = 80 * 1024 * 1024; // 80MB
+    const allowedTypes = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ];
+    const maxFileSize = 80 * 1024 * 1024; // 80MB
 
-document.getElementById('uploadForm').addEventListener('submit', function(e) {
-    const fileInput = document.getElementById('quizfile');
-    const files = fileInput.files;
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('quizfile');
+        const files = fileInput.files;
 
-    if (files.length !== 1) {
-        e.preventDefault();
-        showModal('Please select exactly one file to upload.');
-        return;
+        if (files.length !== 1) {
+            e.preventDefault();
+            showModal('Please select exactly one file to upload.');
+            return;
+        }
+
+        const file = files[0];
+        if (!allowedTypes.includes(file.type)) {
+            e.preventDefault();
+            showModal('Invalid file type. Only PDF or PPTX files are allowed.');
+            return;
+        }
+
+        if (file.size > maxFileSize) {
+            e.preventDefault();
+            showModal('File is too large. Maximum size is 10 MB.');
+            return;
+        }
+    });
+
+    function showModal(message) {
+        const modal = document.getElementById('fileErrorModal');
+        document.getElementById('fileErrorMessage').innerText = message;
+        modal.style.display = 'flex';
     }
 
-    const file = files[0];
-    if (!allowedTypes.includes(file.type)) {
-        e.preventDefault();
-        showModal('Invalid file type. Only PDF or PPTX files are allowed.');
-        return;
+    function closeModal() {
+        document.getElementById('fileErrorModal').style.display = 'none';
     }
-
-    if (file.size > maxFileSize) {
-        e.preventDefault();
-        showModal('File is too large. Maximum size is 10 MB.');
-        return;
-    }
-});
-
-function showModal(message) {
-    const modal = document.getElementById('fileErrorModal');
-    document.getElementById('fileErrorMessage').innerText = message;
-    modal.style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('fileErrorModal').style.display = 'none';
-}
 </script>
 
 <?php
@@ -205,11 +207,12 @@ if ($files) {
 
     echo html_writer::start_tag('table', ['class' => 'table table-striped']);
     echo html_writer::start_tag('thead');
-    echo html_writer::tag('tr',
-        html_writer::tag('th', 'Filename').
-        html_writer::tag('th', 'Uploaded By').
-        html_writer::tag('th', 'Uploaded Time').
-        html_writer::tag('th', 'Action')
+    echo html_writer::tag(
+        'tr',
+        html_writer::tag('th', 'Filename') .
+            html_writer::tag('th', 'Uploaded By') .
+            html_writer::tag('th', 'Uploaded Time') .
+            html_writer::tag('th', 'Action')
     );
     echo html_writer::end_tag('thead');
     echo html_writer::start_tag('tbody');
@@ -218,25 +221,30 @@ if ($files) {
         $user = $DB->get_record('user', ['id' => $file->userid], '*', MUST_EXIST);
         $fullname = fullname($user);
         $time = userdate($file->timecreated);
-        $readyurl = new moodle_url('/mod/autogenquiz/generate.php', ['id' => $cm->id, 'fileid' => $file->id]); // links to generate.php and starts the question generation flow
+        $readyurl = new moodle_url('/mod/autogenquiz/select_type.php', [
+            'id' => $cm->id,
+            'fileid' => $file->id
+        ]);
         $deleteurl = new moodle_url('/mod/autogenquiz/delete_file.php', ['id' => $cm->id, 'fileid' => $file->id, 'sesskey' => sesskey()]); // removes the file record and the stored file
 
-        echo html_writer::tag('tr',
-            html_writer::tag('td', s($file->filename)).
-            html_writer::tag('td', s($fullname)).
-            html_writer::tag('td', s($time)).
-            html_writer::tag('td',
-                html_writer::link($readyurl, 'Ready', ['class' => 'btn btn-success me-2']).
-                html_writer::link($deleteurl, 'Delete', [
-                    'class' => 'btn btn-danger',
-                    'onclick' => "return confirm('Are you sure you want to delete this file?');",
-                ])
-            )
+        echo html_writer::tag(
+            'tr',
+            html_writer::tag('td', s($file->filename)) .
+                html_writer::tag('td', s($fullname)) .
+                html_writer::tag('td', s($time)) .
+                html_writer::tag(
+                    'td',
+                    html_writer::link($readyurl, 'Ready', ['class' => 'btn btn-success me-2']) .
+                        html_writer::link($deleteurl, 'Delete', [
+                            'class' => 'btn btn-danger',
+                            'onclick' => "return confirm('Are you sure you want to delete this file?');",
+                        ])
+                )
         );
 
         // Display extracted text with edit/save functionality: clicking "Edit" unlocks the textarea, clicking "Save" submits the text to save_text.php
         $confirmed = $file->confirmed_text ?? '';
-        $formid = 'form_'.$file->id;
+        $formid = 'form_' . $file->id;
 
         $form = html_writer::start_tag('form', [
             'id' => $formid,
@@ -244,7 +252,7 @@ if ($files) {
             'method' => 'post',
         ]);
         $form .= html_writer::tag('textarea', s($confirmed), [
-            'id' => 'text_'.$file->id,
+            'id' => 'text_' . $file->id,
             'name' => 'confirmed_text',
             'rows' => 6,
             'class' => 'form-control mb-2 border-0 bg-transparent',

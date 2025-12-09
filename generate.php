@@ -1,7 +1,7 @@
 <?php
 
 require '../../config.php'; // Loads Moodle environment
-require_once __DIR__.'/ai_request.php'; //  Loads the AI generation function
+require_once __DIR__ . '/ai_request.php'; //  Loads the AI generation function
 
 // Read parameters
 $id = required_param('id', PARAM_INT);
@@ -150,21 +150,21 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
             $ans = 'True';
         }
 
-        echo '<div class="card mb-3 p-3" id="q_'.$i.'">';
+        echo '<div class="card mb-3 p-3" id="q_' . $i . '">';
         echo '<div class="d-flex justify-content-between align-items-center">';
-        echo '<h6 class="fw-bold mb-0">Question '.$i.'</h6>';
-        echo '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeQuestion('.$i.')">Delete</button>';
+        echo '<h6 class="fw-bold mb-0">Question ' . $i . '</h6>';
+        echo '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeQuestion(' . $i . ')">Delete</button>';
         echo '</div>';
 
-        echo '<textarea class="form-control mt-2" name="questions['.$i.'][question]" rows="2">'.$qtext.'</textarea>';
+        echo '<textarea class="form-control mt-2" name="questions[' . $i . '][question]" rows="2">' . $qtext . '</textarea>';
 
         echo '<div class="mt-2"><label class="me-2 fw-semibold">Answer:</label>';
-        echo '<select name="questions['.$i.'][answer]" class="form-select d-inline-block" style="width:auto;">';
+        echo '<select name="questions[' . $i . '][answer]" class="form-select d-inline-block" style="width:auto;">';
 
         // dropdown for answer (True/False)
         foreach (['True', 'False'] as $opt) {
             $sel = $ans === $opt ? ' selected' : '';
-            echo '<option value="'.$opt.'"'.$sel.'>'.$opt.'</option>';
+            echo '<option value="' . $opt . '"' . $sel . '>' . $opt . '</option>';
         }
 
         echo '</select></div></div>';
@@ -181,7 +181,7 @@ function render_editable_form(int $id, int $fileid, int $genid, array $cleanjson
         'genid' => $genid,
         'id' => $id,
     ]);
-    echo '<a href="'.$importurl.'" class="btn btn-success">Import to Question Bank</a>';
+    echo '<a href="' . $importurl . '" class="btn btn-success">Import to Question Bank</a>';
 
     echo '</div>';
 
@@ -202,18 +202,21 @@ JS;
 $formurl = new moodle_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $fileid]);
 
 echo '<div class="card mb-3"><div class="card-body">';
-echo '<form method="post" action="'.$formurl.'" id="generateForm">';
+echo '<form method="post" action="' . $formurl . '" id="generateForm">';
 
 echo '<div class="mb-3"><label class="form-label fw-semibold">Number of True/False Questions</label>';
 echo '<input type="number" name="question_count" class="form-control" min="1" max="20" value="10" required></div>';
 
-echo '<input type="hidden" name="fileid" value="'.$fileid.'">';
+echo '<input type="hidden" name="fileid" value="' . $fileid . '">';
 
 echo '<button type="submit" id="genbtn" class="btn btn-primary">
         Generate True/False
     </button>';
 
-echo '<a href="'.new moodle_url('/mod/autogenquiz/view.php', ['id' => $id]).'" class="btn btn-secondary ms-2">Back</a>';
+echo '<a href="' . new moodle_url('/mod/autogenquiz/select_type.php', [
+    'id' => $id,
+    'fileid' => $fileid
+]) . '" class="btn btn-secondary ms-2">Back</a>';
 
 echo '</form></div></div>';
 
@@ -230,12 +233,12 @@ echo '
                 // Create overlay
                 const overlay = document.createElement("div");
                 overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(255,255,255,0.9); z-index:9999; display:flex; align-items:center; justify-content:center;";
-                overlay.innerHTML = \'<div class="card shadow-lg" style="max-width:400px;">'.
-                    '<div class="card-body text-center p-4">'.
-                    '<div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>'.
-                    '<h5 class="card-title mb-2">Processing</h5>'.
-                    '<p class="card-text">Generating questions from your document.<br>This process may take up to one minute. Please do not close this page.</p>'.
-                    '</div></div>\';
+                overlay.innerHTML = \'<div class="card shadow-lg" style="max-width:400px;">' .
+    '<div class="card-body text-center p-4">' .
+    '<div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>' .
+    '<h5 class="card-title mb-2">Processing</h5>' .
+    '<p class="card-text">Generating questions from your document.<br>This process may take up to one minute. Please do not close this page.</p>' .
+    '</div></div>\';
                 overlay.id = "loadingOverlay";
                 document.body.appendChild(overlay);
             }
@@ -297,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Error if parsing failed
     if (!is_array($arr)) {
         echo $OUTPUT->notification('Failed to parse AI output.', core\output\notification::NOTIFY_ERROR);
-        echo '<pre>'.s($raw).'</pre>';
+        echo '<pre>' . s($raw) . '</pre>';
         echo $OUTPUT->footer();
         exit;
     }
