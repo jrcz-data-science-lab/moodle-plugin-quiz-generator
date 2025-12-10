@@ -154,4 +154,86 @@ if ($saved) {
 </script>
 
 <?php
-echo $OUTPUT->footer();
+// Handle POST = generate new MCSA questions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    global $DB;
+
+    $count = required_param('question_count', PARAM_INT);
+    $fid = required_param('fileid', PARAM_INT);
+
+    $file = $DB->get_record('autogenquiz_files', ['id' => $fid]);
+    if (!$file) {
+        echo $OUTPUT->notification('Source file is missing.', core\output\notification::NOTIFY_ERROR);
+        echo $OUTPUT->footer();
+        exit;
+    }
+
+    // Create task record
+    $task = (object)[
+        'fileid' => $fid,
+        'courseid' => $course->id,
+        'status' => 'sent_request',
+        'created_at' => time(),
+        'updated_at' => time(),
+    ];
+    $taskid = $DB->insert_record('autogenquiz_tasks', $task, true);
+
+    require_once __DIR__ . '/ai_request.php';
+    $res = autogenquiz_generate_mcsa_questions($file->confirmed_text, $count);
+    $data = json_decode($res, true);
+
+    if (!empty($data['connection_error'])) {
+        echo '<div class="alert alert-danger mt-2">
+            The system could not connect to the question-generation server.
+            Please contact the LLM administrator or technical department.
+        </div>';
+        echo $OUTPUT->footer();
+        exit;
+    }
+
+    // Extract raw JSON text
+    $raw = $data['response'] ?? $data['message']['content'] ?? $res;
+    $raw = trim(preg_replace(['/^```(json)?/i', '/```$/'], '', $raw));
+
+    // Decode JSON
+    $arr = json_decode($raw, true);
+    if (!is_array($arr) && preg_match('/\[[\s\S]*\]/', $raw, $m)) {
+        $arr = json_decode($m[0], true);
+    }
+
+    if (!is_array($arr)) {
+        echo $OUTPUT->notification('Failed to parse AI output.', core\output\notification::NOTIFY_ERROR);
+        echo '<pre>' . s($raw) . '</pre>';
+        echo $OUTPUT->footer();
+        exit;
+    }
+
+    // Ensure format is correct
+    foreach ($arr as &$q) {
+        $q['type'] = 'mcsa';
+        if (!isset($q['options']) || !is_array($q['options'])) {
+            $q['options'] = ["Option A", "Option B", "Option C", "Option D"];
+        }
+        if (!isset($q['correct'])) {
+            $q['correct'] = 0;
+        }
+    }
+
+    // Save generation record
+    $gen = (object)[
+        'taskid' => $taskid,
+        'rawtext' => $file->confirmed_text,
+        'llm_response' => $res,
+        'parsed_response' => json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+        'is_approved' => 0,
+        'imported_to_bank' => 0,
+    ];
+    $newid = $DB->insert_record('autogenquiz_generated', $gen, true);
+
+    // Show results (UI will be implemented in Step 3)
+    echo html_writer::tag('h5', 'Generated Questions (MCSA)');
+    echo '<pre>' . s(json_encode($arr, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
+
+    echo $OUTPUT->footer();
+    exit;
+}
