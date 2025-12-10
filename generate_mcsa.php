@@ -180,7 +180,7 @@ if ($saved) {
 
             <input type="hidden" name="fileid" value="<?php echo (int)$fileid; ?>">
 
-            <button type="submit" id="genbtn" class="btn btn-primary">Generate</button>
+            <button type="submit" id="genbtn" class="btn btn-primary">Generate MCSA</button>
             <a href="<?php echo $backurl; ?>" class="btn btn-secondary ms-2">Back</a>
         </form>
     </div>
