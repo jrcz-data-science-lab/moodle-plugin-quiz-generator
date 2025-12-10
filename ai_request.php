@@ -11,7 +11,7 @@ function autogenquiz_generate_tf_questions($text, $count)
 {
     global $CFG;
 
-    $configfile = __DIR__.'/config_local.php'; // Load config_local.php
+    $configfile = __DIR__ . '/config_local.php'; // Load config_local.php
     if (!file_exists($configfile)) {
         return json_encode(['error' => 'config_local.php missing.']);
     }
@@ -112,5 +112,78 @@ function autogenquiz_generate_tf_questions($text, $count)
     curl_close($curl);
 
     // Return API response: If the server returned empty or null → send error. Otherwise → return the AI response as-is.
+    return $response ?: json_encode(['connection_error' => true, 'error' => 'Empty response from API.']);
+}
+
+/**
+ * Generate Multiple Choice Single Answer (MCSA) questions.
+ * $text = extracted + confirmed text
+ * $count = number of questions to generate.
+ */
+function autogenquiz_generate_mcsa_questions($text, $count)
+{
+    global $CFG;
+
+    $configfile = __DIR__ . '/config_local.php';
+    if (!file_exists($configfile)) {
+        return json_encode(['error' => 'config_local.php missing.']);
+    }
+    require $configfile;
+
+    if (empty($AUTOGENQUIZ_API_URL)) {
+        return json_encode(['error' => 'API URL not set.']);
+    }
+
+    $prompt = <<<PROMPT
+You are a professional educational quiz generator.
+
+TASK:
+- Create exactly {$count} single-answer multiple choice questions (MCSA) from the TEXT SOURCE.
+- Your entire reply MUST be ONE JSON array. No text before or after it.
+
+STRICT JSON SCHEMA:
+Each item MUST be:
+{
+  "id": <number>,
+  "type": "mcsa",
+  "question": "<question text>",
+  "options": ["A", "B", "C", "D"],
+  "correct": <0-3>   // index of correct option
+}
+
+RULES:
+- Absolutely no markdown or code fences.
+- No explanations, no reasoning, no comments.
+- "options" MUST be exactly 4 options.
+- "correct" MUST be the index 0–3.
+- All strings use double quotes.
+
+TEXT SOURCE:
+{$text}
+PROMPT;
+
+    $payload = json_encode([
+        'model' => 'gpt-oss:20b',
+        'prompt' => $prompt,
+        'stream' => false,
+    ]);
+
+    $curl = curl_init($AUTOGENQUIZ_API_URL);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 120,
+    ]);
+
+    $response = curl_exec($curl);
+    if (curl_errno($curl)) {
+        $error = curl_error($curl);
+        curl_close($curl);
+        return json_encode(['connection_error' => true, 'error' => $error]);
+    }
+    curl_close($curl);
+
     return $response ?: json_encode(['connection_error' => true, 'error' => 'Empty response from API.']);
 }
