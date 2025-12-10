@@ -5,8 +5,8 @@ require '../../config.php';
 // Read parameters
 $id = required_param('id', PARAM_INT);
 $fileid = optional_param('fileid', 0, PARAM_INT);
-$genid = optional_param('genid', 0, PARAM_INT); // reserved for future use (saved generation id)
-$saved = optional_param('saved', 0, PARAM_INT); // reserved for future use (saved flag)
+$genid = optional_param('genid', 0, PARAM_INT);
+$saved = optional_param('saved', 0, PARAM_INT);
 
 // Load course and course module
 $cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
@@ -19,7 +19,7 @@ require_capability('mod/autogenquiz:view', $context);
 
 global $DB;
 
-// Page setup (same as generate.php, only heading text changed)
+// Page Setup
 $PAGE->set_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $fileid]);
 $PAGE->set_title('AutoGenQuiz - Generate Multiple Choice');
 $PAGE->set_heading('Generate Multiple Choice (Single Answer)');
@@ -27,43 +27,116 @@ $PAGE->set_heading('Generate Multiple Choice (Single Answer)');
 echo $OUTPUT->header();
 echo $OUTPUT->heading('AutoGenQuiz Generator');
 
-// URLs for form action and back button
+// URLs
 $formurl = new moodle_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $fileid]);
 $backurl = new moodle_url('/mod/autogenquiz/select_type.php', ['id' => $id, 'fileid' => $fileid]);
+
+
+/* ============================================================
+   FUNCTION: Render editable UI for MCSA questions
+   ============================================================ */
+function render_editable_form_mcsa(int $id, int $fileid, int $genid, array $items): void
+{
+
+    echo html_writer::start_tag('form', [
+        'method' => 'post',
+        'action' => new moodle_url('/mod/autogenquiz/save_generated_mcsa.php'),
+    ]);
+
+    echo html_writer::input_hidden_params(
+        new moodle_url('', [
+            'genid' => $genid,
+            'id' => $id,
+            'fileid' => $fileid,
+            'sesskey' => sesskey(),
+        ])
+    );
+
+    echo '<div id="question-list">';
+    $i = 1;
+
+    foreach ($items as $q) {
+        $text = s(trim($q['question'] ?? ''));
+        $options = $q['options'] ?? [];
+        $correct = $q['correct'] ?? 0;
+
+        echo '<div class="card mb-3 p-3" id="q_' . $i . '">';
+        echo '<div class="d-flex justify-content-between align-items-center">';
+        echo '<h6 class="fw-bold mb-0">Question ' . $i . '</h6>';
+        echo '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeQuestion(' . $i . ')">Delete</button>';
+        echo '</div>';
+
+        echo '<textarea class="form-control mt-2" name="questions[' . $i . '][question]" rows="2">' . $text . '</textarea>';
+
+        echo '<div class="mt-3">';
+        foreach ($options as $idx => $op) {
+            $label = chr(65 + $idx); // A B C D
+            $checked = ($correct == $idx) ? 'checked' : '';
+
+            echo '<div class="input-group mb-2">';
+            echo '<div class="input-group-text">';
+            echo '<input type="radio" name="questions[' . $i . '][correct]" value="' . $idx . '" ' . $checked . '>';
+            echo '</div>';
+            echo '<input type="text" class="form-control" name="questions[' . $i . '][options][' . $idx . ']" value="' . s($op) . '">';
+            echo '<span class="input-group-text">' . $label . '</span>';
+            echo '</div>';
+        }
+        echo '</div>';
+
+        echo '</div>';
+        $i++;
+    }
+
+    echo '</div>';
+
+    echo '<div class="mt-3">';
+    echo '<button type="submit" class="btn btn-primary me-2">Save Changes</button>';
+
+    $importurl = new moodle_url('/mod/autogenquiz/import_to_bank_mcsa.php', ['genid' => $genid, 'id' => $id]);
+    echo '<a href="' . $importurl . '" class="btn btn-success">Import to Question Bank</a>';
+
+    echo '</div>';
+
+    echo html_writer::end_tag('form');
+
+    echo "
+    <script>
+    function removeQuestion(id) {
+        const el = document.getElementById('q_' + id);
+        if (el) el.remove();
+    }
+    </script>
+    ";
+}
+
+
+/* ============================================================
+   UI: Instructions + Form for entering quantity
+   ============================================================ */
 ?>
 
-<!-- Collapsible instruction block (copied from generate.php) -->
 <div class="upload-instructions border rounded mb-3"
     style="background:#f8f9fa; border-left:5px solid #0d6efd;">
 
-    <!-- Header -->
     <div class="instruction-header bg-light d-flex justify-content-between align-items-center px-3 py-2"
         style="cursor:pointer;" onclick="toggleGenInstruction()">
 
-        <!-- Short instruction (visible ONLY when collapsed) -->
         <p id="gen-short-text" class="mb-0" style="font-size:15px; color:#333; display:block;">
             Click <strong style="color:#0d6efd;">Generate</strong> to create questions.
             You may edit the generated questions and click
-            <strong style="color:#0d6efd;">Save Changes</strong> to confirm.
-            Or click <strong style="color:#0d6efd;">Import to Question Bank</strong> directly to save them.<br><br>
+            <strong style="color:#0d6efd;">Save Changes</strong>.
+            Or click <strong style="color:#0d6efd;">Import to Question Bank</strong> directly.<br><br>
             <span class="text-muted">For more details, click the triangle.</span>
         </p>
 
         <span id="gen-toggle-icon" style="font-size:18px;">&#9654;</span>
     </div>
 
-    <!-- Expanded content (visible ONLY when expanded) -->
     <div id="gen-instruction-content" style="display:none; padding:15px 20px;">
-        <p>The system generates <strong style="color:#0d6efd;">10 questions by default</strong>,
-            but you may enter any number you prefer.</p>
-
-        <p>All generated questions can be edited — please verify each answer instead of fully relying on the AI.</p>
-
-        <p>After editing, click <strong style="color:#0d6efd;">Save Changes</strong> to store your updates.</p>
-
-        <p>Whether you edit the questions or not, you can always click
-            <strong style="color:#0d6efd;">Import to Question Bank</strong> to save them.
-        </p>
+        <p>The system generates <strong style="color:#0d6efd;">10 questions by default</strong>.</p>
+        <p>All generated questions can be edited — please verify each answer.</p>
+        <p>After editing, click <strong style="color:#0d6efd;">Save Changes</strong>.</p>
+        <p>You may always click <strong style="color:#0d6efd;">Import to Question Bank</strong>.</p>
     </div>
 </div>
 
@@ -78,29 +151,25 @@ $backurl = new moodle_url('/mod/autogenquiz/select_type.php', ['id' => $id, 'fil
         if (isHidden) {
             content.style.display = "block";
             shortText.style.display = "none";
-            icon.innerHTML = "&#9660;"; // ▼
+            icon.innerHTML = "&#9660;";
         } else {
             content.style.display = "none";
             shortText.style.display = "block";
-            icon.innerHTML = "&#9654;"; // ▶
+            icon.innerHTML = "&#9654;";
         }
     }
 </script>
 
-<!-- One-minute warning (copied from generate.php) -->
 <div class="alert alert-info mt-2">
     Generating questions may take up to one minute depending on the server connection.
-    If it is unusually slow, please contact the LLM administrator or the technical department.
 </div>
 
 <?php
-// Success message (reserved for future; same position as generate.php)
 if ($saved) {
     echo $OUTPUT->notification('Changes saved successfully.', core\output\notification::NOTIFY_SUCCESS);
 }
 ?>
 
-<!-- Form: same layout as generate.php, only text changed to MC -->
 <div class="card mb-3">
     <div class="card-body">
         <form method="post" action="<?php echo $formurl; ?>" id="generateForm">
@@ -111,25 +180,19 @@ if ($saved) {
 
             <input type="hidden" name="fileid" value="<?php echo (int)$fileid; ?>">
 
-            <button type="submit" id="genbtn" class="btn btn-primary">
-                Generate
-            </button>
-
+            <button type="submit" id="genbtn" class="btn btn-primary">Generate</button>
             <a href="<?php echo $backurl; ?>" class="btn btn-secondary ms-2">Back</a>
         </form>
     </div>
 </div>
 
 <script>
-    // Show loading overlay on form submission (copied from generate.php)
     (function() {
         const form = document.getElementById("generateForm");
 
         if (form) {
             form.addEventListener("submit", function(e) {
-                // Only show overlay if form is valid
                 if (form.checkValidity()) {
-                    // Create overlay
                     const overlay = document.createElement("div");
                     overlay.style.cssText =
                         "position:fixed; top:0; left:0; width:100%; height:100%;" +
@@ -140,13 +203,11 @@ if ($saved) {
                         '<div class="card-body text-center p-4">' +
                         '<div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>' +
                         '<h5 class="card-title mb-2">Processing</h5>' +
-                        '<p class="card-text">Generating questions from your document.<br>This process may take up to one minute. Please do not close this page.</p>' +
-                        '</div>' +
-                        '</div>';
+                        '<p class="card-text">Generating questions...<br>Please do not close this page.</p>' +
+                        '</div></div>';
                     overlay.id = "loadingOverlay";
                     document.body.appendChild(overlay);
                 }
-                // Allow form to submit normally
                 return true;
             });
         }
@@ -154,9 +215,10 @@ if ($saved) {
 </script>
 
 <?php
-// Handle POST = generate new MCSA questions
+/* ============================================================
+   POST: Send request + parse + render editable UI
+   ============================================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    global $DB;
 
     $count = required_param('question_count', PARAM_INT);
     $fid = required_param('fileid', PARAM_INT);
@@ -168,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Create task record
+    // Create task
     $task = (object)[
         'fileid' => $fid,
         'courseid' => $course->id,
@@ -184,18 +246,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($data['connection_error'])) {
         echo '<div class="alert alert-danger mt-2">
-            The system could not connect to the question-generation server.
-            Please contact the LLM administrator or technical department.
-        </div>';
+                Connection error. Please contact administrator.
+              </div>';
         echo $OUTPUT->footer();
         exit;
     }
 
-    // Extract raw JSON text
     $raw = $data['response'] ?? $data['message']['content'] ?? $res;
     $raw = trim(preg_replace(['/^```(json)?/i', '/```$/'], '', $raw));
 
-    // Decode JSON
     $arr = json_decode($raw, true);
     if (!is_array($arr) && preg_match('/\[[\s\S]*\]/', $raw, $m)) {
         $arr = json_decode($m[0], true);
@@ -208,10 +267,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Ensure format is correct
     foreach ($arr as &$q) {
         $q['type'] = 'mcsa';
-        if (!isset($q['options']) || !is_array($q['options'])) {
+        if (empty($q['options']) || !is_array($q['options'])) {
             $q['options'] = ["Option A", "Option B", "Option C", "Option D"];
         }
         if (!isset($q['correct'])) {
@@ -219,7 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Save generation record
     $gen = (object)[
         'taskid' => $taskid,
         'rawtext' => $file->confirmed_text,
@@ -230,10 +287,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     $newid = $DB->insert_record('autogenquiz_generated', $gen, true);
 
-    // Show results (UI will be implemented in Step 3)
     echo html_writer::tag('h5', 'Generated Questions (MCSA)');
-    echo '<pre>' . s(json_encode($arr, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
+    render_editable_form_mcsa($id, $fid, $newid, $arr);
 
     echo $OUTPUT->footer();
     exit;
 }
+
+echo $OUTPUT->footer();
