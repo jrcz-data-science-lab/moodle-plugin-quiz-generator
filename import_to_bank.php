@@ -1,19 +1,13 @@
 <?php
 
 require '../../config.php';
-require_once $CFG->libdir.'/questionlib.php'; // Loads the question engine functions (required to create questions)
+require_once $CFG->libdir . '/questionlib.php';
+require_once __DIR__ . '/locallib.php';
 
-// Required parameters
 $id = required_param('id', PARAM_INT);
 $genid = required_param('genid', PARAM_INT);
 
-// Standard Moodle security and setup: This ensures only users who are allowed to add questions (teachers, managers) can import.
-$cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
-$course = get_course($cm->course);
-require_login($course, true, $cm);
-
-$modulecontext = context_module::instance($cm->id);
-require_capability('moodle/question:add', $modulecontext);
+[$cm, $course, $modulecontext] = autogenquiz_require_module_context($id, 'moodle/question:add');
 
 global $DB, $USER, $PAGE, $OUTPUT;
 
@@ -21,9 +15,7 @@ $PAGE->set_url('/mod/autogenquiz/import_to_bank.php', ['id' => $id, 'genid' => $
 $PAGE->set_title('Import to Question Bank');
 $PAGE->set_heading('Import to Question Bank');
 
-// Load the generated questions
 $rec = $DB->get_record('autogenquiz_generated', ['id' => $genid], '*', MUST_EXIST);
-// Converts the saved JSON (cleaned by save_generated.php) into PHP array
 $items = json_decode($rec->parsed_response, true);
 if (!is_array($items)) {
     echo $OUTPUT->header();
@@ -32,7 +24,6 @@ if (!is_array($items)) {
     exit;
 }
 
-// Get the default question category (activity-level): If the category doesn't exist, Moodle automatically creates it.
 $category = question_get_default_category($modulecontext->id, true);
 if (!$category) {
     echo $OUTPUT->header();
@@ -41,21 +32,16 @@ if (!$category) {
     exit;
 }
 
-// Prepare the True/False question type handler
 $qtype = question_bank::get_qtype('truefalse');
 
-// Loop through each AI-generated question item and create a Moodle question
 foreach ($items as $item) {
-    // Extract question text
     $qtext = trim($item['question'] ?? '');
     if ($qtext === '') {
         continue;
     }
 
-    // Determine the correct answer: Convert "True" or "False" into Moodle’s expected boolean (1 or 0)
     $istrue = strtolower(trim($item['answer'] ?? 'true')) === 'true';
 
-    // Create a new question object
     $question = new stdClass();
     $question->id = 0;
     $question->category = $category->id;
@@ -64,13 +50,12 @@ foreach ($items as $item) {
     $question->modifiedby = $USER->id;
     $question->contextid = $modulecontext->id;
 
-    // Prepare the form data for saving the question
     $form = new stdClass();
     $form->id = 0;
     $form->parent = 0;
-    $form->category = $category->id.','.$category->contextid;
+    $form->category = $category->id . ',' . $category->contextid;
 
-    $form->name = core_text::substr($qtext, 0, 200); // Question name = first 200 chars of the question text
+    $form->name = core_text::substr($qtext, 0, 200);
 
     $form->questiontext = [
         'text' => $qtext,
@@ -78,7 +63,6 @@ foreach ($items as $item) {
         'itemid' => 0,
     ];
 
-    // Set the feedback fields as empty
     $form->generalfeedback = [
         'text' => '',
         'format' => FORMAT_HTML,
@@ -89,16 +73,15 @@ foreach ($items as $item) {
     $form->feedbacktrue = ['text' => '', 'format' => FORMAT_HTML, 'itemid' => 0];
     $form->feedbackfalse = ['text' => '', 'format' => FORMAT_HTML, 'itemid' => 0];
 
-    // Save the question
     $qtype->save_question($question, $form);
 }
 
-// Mark as imported
 $DB->set_field('autogenquiz_generated', 'imported_to_bank', 1, ['id' => $genid]);
 
-// Teacher returns to generate.php with success notification.
+$realfileid = autogenquiz_get_fileid_from_taskid((int)$rec->taskid);
+
 redirect(
-    new moodle_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $rec->taskid]),
+    new moodle_url('/mod/autogenquiz/generate.php', ['id' => $id, 'fileid' => $realfileid]),
     'Imported successfully to the Question Bank.',
     null,
     core\output\notification::NOTIFY_SUCCESS

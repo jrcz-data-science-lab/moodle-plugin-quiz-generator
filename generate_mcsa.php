@@ -1,25 +1,26 @@
 <?php
 
 require '../../config.php';
+require_once __DIR__ . '/ai_request.php';
+require_once __DIR__ . '/locallib.php';
 
-// Read parameters
 $id = required_param('id', PARAM_INT);
 $fileid = optional_param('fileid', 0, PARAM_INT);
 $genid = optional_param('genid', 0, PARAM_INT);
 $saved = optional_param('saved', 0, PARAM_INT);
 
-// Load course and course module
-$cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
-$course = get_course($cm->course);
-
-require_login($course, true, $cm);
-
-$context = context_module::instance($cm->id);
-require_capability('mod/autogenquiz:view', $context);
+[$cm, $course, $context] = autogenquiz_require_module_context($id, 'mod/autogenquiz:view');
 
 global $DB;
 
-// Page Setup
+if (!$fileid && $genid) {
+    $fileid = autogenquiz_resolve_fileid_from_genid($genid);
+}
+
+if (!$fileid) {
+    autogenquiz_redirect_missing_file($id);
+}
+
 $PAGE->set_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $fileid]);
 $PAGE->set_title('AutoGenQuiz - Generate Multiple Choice');
 $PAGE->set_heading('Generate Multiple Choice (Single Answer)');
@@ -27,17 +28,11 @@ $PAGE->set_heading('Generate Multiple Choice (Single Answer)');
 echo $OUTPUT->header();
 echo $OUTPUT->heading('AutoGenQuiz Generator');
 
-// URLs
 $formurl = new moodle_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $fileid]);
 $backurl = new moodle_url('/mod/autogenquiz/select_type.php', ['id' => $id, 'fileid' => $fileid]);
 
-
-/* ============================================================
-   FUNCTION: Render editable UI for MCSA questions
-   ============================================================ */
 function render_editable_form_mcsa(int $id, int $fileid, int $genid, array $items): void
 {
-
     echo html_writer::start_tag('form', [
         'method' => 'post',
         'action' => new moodle_url('/mod/autogenquiz/save_generated_mcsa.php'),
@@ -70,8 +65,8 @@ function render_editable_form_mcsa(int $id, int $fileid, int $genid, array $item
 
         echo '<div class="mt-3">';
         foreach ($options as $idx => $op) {
-            $label = chr(65 + $idx); // A B C D
-            $checked = ($correct == $idx) ? 'checked' : '';
+            $label = chr(65 + $idx);
+            $checked = ((int)$correct === (int)$idx) ? 'checked' : '';
 
             echo '<div class="input-group mb-2">';
             echo '<div class="input-group-text">';
@@ -109,10 +104,6 @@ function render_editable_form_mcsa(int $id, int $fileid, int $genid, array $item
     ";
 }
 
-
-/* ============================================================
-   UI: Instructions + Form for entering quantity
-   ============================================================ */
 ?>
 
 <div class="upload-instructions border rounded mb-3"
@@ -215,9 +206,6 @@ if ($saved) {
 </script>
 
 <?php
-/* ============================================================
-   POST: Send request + parse + render editable UI
-   ============================================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $count = required_param('question_count', PARAM_INT);
@@ -230,21 +218,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Create task
-    $task = (object)[
-        'fileid' => $fid,
-        'courseid' => $course->id,
-        'status' => 'sent_request',
-        'created_at' => time(),
-        'updated_at' => time(),
-    ];
-    $taskid = $DB->insert_record('autogenquiz_tasks', $task, true);
+    $taskid = autogenquiz_create_task($fid, (int)$course->id, 'sent_request');
 
-    require_once __DIR__ . '/ai_request.php';
     $res = autogenquiz_generate_mcsa_questions($file->confirmed_text, $count);
-    $data = json_decode($res, true);
 
-    if (!empty($data['connection_error'])) {
+    $raw = null;
+    $err = null;
+    $arr = autogenquiz_parse_ai_to_array($res, $raw, $err);
+
+    if ($err === 'connection_error') {
         echo '<div class="alert alert-danger mt-2">
                 Connection error. Please contact administrator.
               </div>';
@@ -252,46 +234,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $raw = $data['response'] ?? $data['message']['content'] ?? $res;
-    $raw = trim(preg_replace(['/^```(json)?/i', '/```$/'], '', $raw));
-
-    $arr = json_decode($raw, true);
-    if (!is_array($arr) && preg_match('/\[[\s\S]*\]/', $raw, $m)) {
-        $arr = json_decode($m[0], true);
-    }
-
     if (!is_array($arr)) {
         echo $OUTPUT->notification('Failed to parse AI output.', core\output\notification::NOTIFY_ERROR);
-        echo '<pre>' . s($raw) . '</pre>';
+        echo '<pre>' . s((string)$raw) . '</pre>';
         echo $OUTPUT->footer();
         exit;
     }
 
-    foreach ($arr as &$q) {
-        $q['type'] = 'mcsa';
-        if (empty($q['options']) || !is_array($q['options'])) {
-            $q['options'] = ["Option A", "Option B", "Option C", "Option D"];
-        }
-        if (!isset($q['correct'])) {
-            $q['correct'] = 0;
-        }
-    }
+    $arr = autogenquiz_normalize_mcsa_items($arr);
 
-    $gen = (object)[
-        'taskid' => $taskid,
-        'rawtext' => $file->confirmed_text,
-        'llm_response' => $res,
-        'parsed_response' => json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-        'is_approved' => 0,
-        'imported_to_bank' => 0,
-    ];
-    $newid = $DB->insert_record('autogenquiz_generated', $gen, true);
+    $newid = autogenquiz_save_generation($taskid, (string)$file->confirmed_text, $res, $arr);
 
     echo html_writer::tag('h5', 'Generated Questions (MCSA)');
     render_editable_form_mcsa($id, $fid, $newid, $arr);
 
     echo $OUTPUT->footer();
     exit;
+}
+
+if ($genid) {
+    $rec = $DB->get_record('autogenquiz_generated', ['id' => $genid], '*', IGNORE_MISSING);
+    if ($rec) {
+        $arr = json_decode($rec->parsed_response, true) ?: [];
+        echo html_writer::tag('h5', 'Generated Questions (MCSA)');
+        render_editable_form_mcsa($id, $fileid, $rec->id, $arr);
+    } else {
+        echo $OUTPUT->notification('Generation record not found.', core\output\notification::NOTIFY_ERROR);
+    }
 }
 
 echo $OUTPUT->footer();

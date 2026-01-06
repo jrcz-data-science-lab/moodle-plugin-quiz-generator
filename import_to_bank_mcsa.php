@@ -2,30 +2,19 @@
 
 require '../../config.php';
 require_once $CFG->libdir . '/questionlib.php';
+require_once __DIR__ . '/locallib.php';
 
-// Required parameters
 $id    = required_param('id', PARAM_INT);
 $genid = required_param('genid', PARAM_INT);
 
-// Standard Moodle setup
-$cm     = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
-$course = get_course($cm->course);
-
-require_login($course, true, $cm);
-
-$modulecontext = context_module::instance($cm->id);
-
-// Same as T/F → require ability to add questions
-require_capability('moodle/question:add', $modulecontext);
+[$cm, $course, $modulecontext] = autogenquiz_require_module_context($id, 'moodle/question:add');
 
 global $DB, $USER, $PAGE, $OUTPUT;
 
-// Page info
 $PAGE->set_url('/mod/autogenquiz/import_to_bank_mcsa.php', ['id' => $id, 'genid' => $genid]);
 $PAGE->set_title('Import MCSA to Question Bank');
 $PAGE->set_heading('Import Multiple Choice Questions');
 
-// Load generation record
 $rec = $DB->get_record('autogenquiz_generated', ['id' => $genid], '*', MUST_EXIST);
 $items = json_decode($rec->parsed_response, true);
 
@@ -36,11 +25,6 @@ if (!is_array($items)) {
     exit;
 }
 
-// Load task to retrieve original fileid
-$task = $DB->get_record('autogenquiz_tasks', ['id' => $rec->taskid], '*', MUST_EXIST);
-
-// --- IMPORTANT ---
-// Same method as T/F to get correct category
 $category = question_get_default_category($modulecontext->id, true);
 if (!$category) {
     echo $OUTPUT->header();
@@ -49,10 +33,8 @@ if (!$category) {
     exit;
 }
 
-// Get the MULTICHOICE qtype handler (required)
 $qtype = question_bank::get_qtype('multichoice');
 
-// Loop through each generated question
 foreach ($items as $item) {
 
     $qtext = trim($item['question'] ?? '');
@@ -63,7 +45,6 @@ foreach ($items as $item) {
     $options = $item['options'] ?? [];
     $correct = $item['correct'] ?? 0;
 
-    // --- Create question object ---
     $question = new stdClass();
     $question->id        = 0;
     $question->category  = $category->id;
@@ -72,14 +53,12 @@ foreach ($items as $item) {
     $question->modifiedby = $USER->id;
     $question->contextid  = $modulecontext->id;
 
-    // --- Build form data (VERY IMPORTANT for qtype->save_question) ---
     $form = new stdClass();
 
     $form->id       = 0;
     $form->parent   = 0;
     $form->category = $category->id . ',' . $category->contextid;
 
-    // Question name = first 200 chars
     $form->name = core_text::substr($qtext, 0, 200);
 
     $form->questiontext = [
@@ -88,7 +67,6 @@ foreach ($items as $item) {
         'itemid' => 0,
     ];
 
-    // General feedback (empty)
     $form->generalfeedback = [
         'text' => '',
         'format' => FORMAT_HTML,
@@ -113,12 +91,10 @@ foreach ($items as $item) {
         'itemid' => 0,
     ];
 
-    // MULTICHOICE-SPECIFIC FORM FIELDS
-    $form->single = 1;  // Single-answer question
+    $form->single = 1;
     $form->shuffleanswers = 1;
     $form->answernumbering = 'abc';
 
-    // Build answers following Moodle expected structure
     $form->answer = [];
     $form->fraction = [];
     $form->feedback = [];
@@ -130,8 +106,7 @@ foreach ($items as $item) {
             'itemid' => 0,
         ];
 
-        // Only one correct answer
-        $form->fraction[$idx] = ($idx == $correct) ? 1.0 : 0.0;
+        $form->fraction[$idx] = ((int)$idx === (int)$correct) ? 1.0 : 0.0;
 
         $form->feedback[$idx] = [
             'text' => '',
@@ -140,16 +115,15 @@ foreach ($items as $item) {
         ];
     }
 
-    // Save the question
     $qtype->save_question($question, $form);
 }
 
-// mark imported
 $DB->set_field('autogenquiz_generated', 'imported_to_bank', 1, ['id' => $genid]);
 
-// redirect back
+$realfileid = autogenquiz_get_fileid_from_taskid((int)$rec->taskid);
+
 redirect(
-    new moodle_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $task->fileid]),
+    new moodle_url('/mod/autogenquiz/generate_mcsa.php', ['id' => $id, 'fileid' => $realfileid]),
     'Multiple-choice questions imported successfully.',
     null,
     core\output\notification::NOTIFY_SUCCESS

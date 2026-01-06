@@ -1,25 +1,18 @@
 <?php
 
 require '../../config.php';
+require_once __DIR__ . '/locallib.php';
 
-// Read required params
 $genid  = required_param('genid', PARAM_INT);
 $id     = required_param('id', PARAM_INT);
 $fileid = required_param('fileid', PARAM_INT);
 
 require_sesskey();
 
-// Load context
-$cm = get_coursemodule_from_id('autogenquiz', $id, 0, false, MUST_EXIST);
-$course = get_course($cm->course);
-require_login($course, true, $cm);
-
-$context = context_module::instance($cm->id);
-require_capability('mod/autogenquiz:view', $context);
+[$cm, $course, $context] = autogenquiz_require_module_context($id, 'mod/autogenquiz:view');
 
 global $DB;
 
-// Retrieve generation record
 $gen = $DB->get_record('autogenquiz_generated', ['id' => $genid], '*', MUST_EXIST);
 
 $items = $_POST['questions'] ?? [];
@@ -58,14 +51,11 @@ if (empty($clean)) {
     );
 }
 
-// Update stored parsed_response
 $gen->parsed_response = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 $DB->update_record('autogenquiz_generated', $gen);
 
-// Mark as approved
 $DB->set_field('autogenquiz_generated', 'is_approved', 1, ['id' => $genid]);
 
-// Redirect back to generate_mcsa with success message
 redirect(
     new moodle_url('/mod/autogenquiz/generate_mcsa.php', [
         'id' => $id,
