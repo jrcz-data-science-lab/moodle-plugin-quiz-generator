@@ -32,6 +32,11 @@ $mcsaurl = new moodle_url('/mod/autogenquiz/generate_mcsa.php', [
   'type' => 'mcsa'
 ]);
 
+$fiburl = new moodle_url('/mod/autogenquiz/generate_fib.php', [
+  'id' => $id,
+  'fileid' => $fileid
+]);
+
 echo '<div class="card p-4" style="max-width:500px;">';
 echo '<p>Please choose the question type you want to generate.</p>';
 
@@ -41,6 +46,10 @@ echo '<a class="btn btn-primary mb-2" style="width:100%;" href="' . $tfurl . '">
 
 echo '<a class="btn btn-success" style="width:100%;" href="' . $mcsaurl . '">
         Generate Multiple Choice (Single Answer)
+      </a>';
+
+echo '<a class="btn btn-warning mt-2" style="width:100%;" href="' . $fiburl . '">
+        Generate Fill in the Blank
       </a>';
 
 echo '</div>';

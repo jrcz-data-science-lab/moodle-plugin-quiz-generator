@@ -132,3 +132,12 @@ function autogenquiz_redirect_missing_file(int $id): void
         core\output\notification::NOTIFY_ERROR
     );
 }
+
+function autogenquiz_normalize_fib_items(array $arr): array
+{
+    foreach ($arr as &$q) {
+        $q['type'] = 'fib';
+        $q['answers'] = array_values($q['answers'] ?? []);
+    }
+    return $arr;
+}
