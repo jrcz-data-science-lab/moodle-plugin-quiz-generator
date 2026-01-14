@@ -12,13 +12,7 @@ function autogenquiz_add_instance($data, $mform = null)
     $data->timecreated = time();
     $data->timemodified = time();
 
-    $data->id = $DB->insert_record('autogenquiz', $data);
-
-    $cm = get_coursemodule_from_id('autogenquiz', $data->cmid);
-    $context = context_module::instance($cm->id);
-    question_make_default_categories([$context]);
-
-    return $data->id;
+    return $DB->insert_record('autogenquiz', $data);
 }
 
 /**
@@ -41,12 +35,11 @@ function autogenquiz_delete_instance($id)
 {
     global $DB;
 
-    if (!$autogenquiz = $DB->get_record('autogenquiz', ['id' => $id])) {
+    if (!$DB->record_exists('autogenquiz', ['id' => $id])) {
         return false;
     }
 
     $DB->delete_records('autogenquiz', ['id' => $id]);
-
     return true;
 }
 
