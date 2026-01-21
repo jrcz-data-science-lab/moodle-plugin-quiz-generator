@@ -20,13 +20,34 @@ After review, questions can be imported into Moodle’s Question Bank using Mood
 
 # 3. Aspects that can still be improved or extended
 
-Although the main workflow is implemented, some limitations and open points remain.
+Although the core workflow is implemented and usable, several limitations and extension points remain. These are based on both technical constraints of Moodle and feedback gathered from teachers and stakeholders.
 
-One important limitation is the Question Bank context. Generated questions are currently inserted into the module-level Question Bank. This behavior is determined by Moodle core and not by the plugin itself. As a result, teachers must manually export questions from the plugin’s Question Bank and then import them into the course-level Question Bank before adding them to a Quiz. If this limitation continues in future Moodle versions, an additional helper or automation mechanism could reduce the amount of manual work required from teachers.
+One important limitation is the Question Bank context. Generated questions are currently inserted into the module-level Question Bank. This behavior is determined by Moodle core APIs and not by the plugin itself. As a result, teachers must manually export questions from the module context and then import them into the course-level Question Bank before they can be used in a Quiz activity. If this limitation remains in future Moodle versions, an additional helper or automation mechanism could be introduced to reduce the amount of manual work required from teachers.
 
-Another aspect is the internal structure of the code. Each question type is handled in separate files, and many parts of the logic are very similar, especially for form handling, saving generated data, and importing questions. This makes the current behavior easy to understand, but it also leads to duplicated code. Once all question types are stable, shared logic could be extracted to simplify maintenance.
+Another aspect concerns the internal structure of the codebase. Each question type is currently implemented in separate files, and many parts of the logic are very similar, especially form handling, saving generated data, validation, and importing questions into the Question Bank. While this separation makes each question type easy to follow in isolation, it also results in duplicated code. Once all supported question types are considered stable, shared logic could be extracted into common helper functions or base abstractions to improve maintainability.
 
-The plugin also relies on a single LLM endpoint defined in a local configuration file. If this service becomes unavailable, question generation cannot proceed. While the current structure allows prompts and requests to be adjusted, switching to another LLM or an external API still requires manual changes. Supporting alternative LLM backends would make the system more flexible in different environments.
+The plugin also relies on a single LLM endpoint defined in a local configuration file. If this external service becomes unavailable, question generation cannot proceed. Although prompts and request formats can be adjusted, switching to another LLM backend or an external API currently requires manual code changes. Supporting multiple or configurable LLM backends would make the system more robust and adaptable to different deployment environments.
+
+Feedback handling is another area with room for improvement. For short answer questions, feedback often requires teacher judgment and may depend on how students phrase their answers. In these cases, it is reasonable for teachers to manually write or adjust feedback. However, for objective question types such as True / False and Multiple Choice (Single Answer), feedback can be more standardized. Because correct and incorrect options are clearly defined, the LLM could automatically generate template-based feedback explaining why an answer is correct or incorrect. Introducing automatic feedback generation for these question types could reduce teachers’ workload while maintaining consistent feedback quality.
+
+Answer strictness for Fill in the Blank questions is also a point of discussion. In real classroom scenarios, students may make minor variations such as differences in capitalization, missing spaces, or small spelling mistakes, even when their conceptual understanding is correct. Currently, answers are matched strictly against predefined correct values. Teachers have indicated that they may want more flexible matching rules. This requires further discussion with teachers to clarify expectations and to decide which types of deviations should be accepted. Based on these requirements, future development could introduce configurable answer-matching strategies, such as case-insensitive comparison or relaxed string matching.
+
+Another important extension point is support for additional question types. At the moment, the plugin only supports generating True / False, Multiple Choice (Single Answer), and Fill in the Blank questions. Moodle’s Question Bank, however, supports many other question types, such as Short Answer, Matching, and potentially others depending on installed plugins. Future development may involve adding support for more question types, which would require new prompt designs, validation logic, form structures, and import handling. This further emphasizes the need for a more modular and extensible internal architecture.
+
+Finally, the current prompt design is tailored specifically for ICT-related teaching materials. This specialization was chosen to maximize output stability and quality for the original use case. However, it limits the plugin’s applicability to other subjects. To support broader educational contexts, subject-specific or configurable prompt templates should be designed in the future, allowing question generation to adapt to different disciplines while maintaining predictable output formats.
+
+### Potential future work (to-do list)
+
+Based on the points above, the following tasks could guide future development:
+
+* Investigate whether Moodle core APIs allow more direct insertion into course-level Question Banks, or design helper tools to streamline question transfer.
+* Refactor duplicated logic across question types into shared utilities or base abstractions.
+* Introduce support for multiple or configurable LLM backends, with graceful fallback or clearer error handling.
+* Implement automatic, template-based feedback generation for objective question types (True / False, Multiple Choice).
+* Define and implement configurable answer-matching rules for Fill in the Blank questions, based on teacher requirements.
+* Extend support to additional Moodle question types (e.g. Short Answer, Matching), including prompt design, validation, and import logic.
+* Redesign the prompt system to support multiple subjects through subject-aware or configurable prompt templates.
+* Validate new features iteratively with teachers to ensure alignment with real teaching and assessment practices.
 
 # 4. Development considerations
 
